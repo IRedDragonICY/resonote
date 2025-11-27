@@ -47,6 +47,10 @@ export default function App() {
     setFiles(prev => [...prev, ...fileStates]);
   };
 
+  const handleRemoveFile = (id: string) => {
+    setFiles(prev => prev.filter(f => f.id !== id));
+  };
+
   const addLog = (message: string, type: 'info' | 'success' | 'warning' | 'thinking' = 'info') => {
     const now = new Date();
     const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
@@ -115,6 +119,9 @@ export default function App() {
     setManualAbc(DEFAULT_ABC);
   };
 
+  // Shared ID for the editor textarea so MusicDisplay can bind to it
+  const EDITOR_TEXTAREA_ID = "abc-source-textarea";
+
   return (
     <div className="min-h-screen bg-md-sys-background text-md-sys-secondary selection:bg-md-sys-primary selection:text-md-sys-onPrimary font-sans flex flex-col">
       
@@ -154,19 +161,8 @@ export default function App() {
 
       <main className="flex-1 pt-14 pb-6 px-4 lg:px-6 max-w-[1920px] mx-auto w-full">
         
-        {/* Header Content */}
-        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-1 tracking-tight">
-              Sheet music to <span className="text-transparent bg-clip-text bg-gradient-to-r from-md-sys-primary to-indigo-400">digital audio</span>
-            </h1>
-            <p className="text-xs text-md-sys-secondary max-w-2xl leading-relaxed">
-               Resonote uses advanced reasoning to create accurate, playable ABC notation from images.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-160px)]">
+        {/* Main Grid - Header removed, height adjusted to fill space */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-100px)]">
           
           {/* Left Column: Input & Editor */}
           <div className="lg:col-span-5 flex flex-col gap-4 h-full overflow-y-auto pr-1">
@@ -185,6 +181,7 @@ export default function App() {
               
               <UploadZone 
                 onFilesSelected={handleFilesSelected} 
+                onFileRemove={handleRemoveFile}
                 currentFiles={files} 
               />
 
@@ -238,6 +235,7 @@ export default function App() {
                 value={manualAbc} 
                 onChange={setManualAbc} 
                 warningId="abc-parse-warnings"
+                textareaId={EDITOR_TEXTAREA_ID}
               />
             </div>
           </div>
@@ -245,7 +243,11 @@ export default function App() {
           {/* Right Column: Visualization */}
           <div className="lg:col-span-7 h-full flex flex-col">
              <div className="flex-1 bg-md-sys-surface rounded-2xl border border-md-sys-outline/20 overflow-hidden relative shadow-2xl">
-                 <MusicDisplay abcNotation={manualAbc} warningId="abc-parse-warnings" />
+                 <MusicDisplay 
+                   abcNotation={manualAbc} 
+                   warningId="abc-parse-warnings" 
+                   textareaId={EDITOR_TEXTAREA_ID}
+                 />
              </div>
           </div>
 

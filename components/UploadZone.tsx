@@ -3,16 +3,16 @@ import { UploadFileState } from '../types';
 
 interface UploadZoneProps {
   onFilesSelected: (files: File[]) => void;
+  onFileRemove: (id: string) => void;
   currentFiles: UploadFileState[];
 }
 
-export const UploadZone: React.FC<UploadZoneProps> = ({ onFilesSelected, currentFiles }) => {
+export const UploadZone: React.FC<UploadZoneProps> = ({ onFilesSelected, onFileRemove, currentFiles }) => {
   
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      // Removed explicit (f: File) type to rely on inference and avoid environment issues
       const filesArray = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
       onFilesSelected(filesArray);
     }
@@ -50,13 +50,29 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onFilesSelected, current
           <input type="file" className="hidden" multiple accept="image/*" onChange={handleChange} />
         </label>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div 
+          className="grid grid-cols-2 md:grid-cols-4 gap-4"
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+        >
           {currentFiles.map((fileState) => (
             <div key={fileState.id} className="relative group aspect-square rounded-2xl overflow-hidden border border-md-sys-outline bg-md-sys-surface">
-              <img src={fileState.preview} alt="preview" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-3">
+              <img src={fileState.preview} alt="preview" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity select-none" />
+              
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-3 pointer-events-none">
                 <p className="text-xs text-white truncate w-full">{fileState.file.name}</p>
               </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFileRemove(fileState.id);
+                }}
+                className="absolute top-2 right-2 p-1.5 bg-black/40 hover:bg-md-sys-error text-white rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 cursor-pointer z-10 hover:scale-105 active:scale-95"
+                title="Remove file"
+              >
+                <span className="material-symbols-rounded text-[16px] block">close</span>
+              </button>
             </div>
           ))}
           <label className="flex flex-col items-center justify-center aspect-square border-2 border-dashed border-md-sys-outline rounded-2xl cursor-pointer hover:bg-md-sys-surfaceVariant/50 transition-colors">

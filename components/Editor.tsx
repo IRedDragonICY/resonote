@@ -4,9 +4,10 @@ interface EditorProps {
   value: string;
   onChange: (val: string) => void;
   warningId?: string;
+  textareaId?: string;
 }
 
-export const Editor: React.FC<EditorProps> = ({ value, onChange, warningId }) => {
+export const Editor: React.FC<EditorProps> = ({ value, onChange, warningId, textareaId }) => {
   return (
     <div className="w-full h-full flex flex-col bg-md-sys-surface rounded-3xl border border-md-sys-outline overflow-hidden">
       <div className="flex items-center px-6 py-4 border-b border-md-sys-outline bg-md-sys-surfaceVariant/50">
@@ -15,6 +16,7 @@ export const Editor: React.FC<EditorProps> = ({ value, onChange, warningId }) =>
       </div>
       <div className="flex-1 relative min-h-0">
         <textarea
+          id={textareaId}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="w-full h-full bg-transparent p-6 text-sm font-mono text-md-sys-secondary resize-none focus:outline-none focus:ring-0 leading-relaxed"
