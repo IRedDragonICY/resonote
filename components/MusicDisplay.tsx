@@ -69,33 +69,72 @@ export const MusicDisplay: React.FC<MusicDisplayProps> = ({ abcNotation }) => {
         
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         
-        // Define Cursor Control using the event logic from documentation
+        // Define Cursor Control using the manual SVG manipulation logic
         const cursorControl = {
             onStart: () => {
-                const cursors = paperRef.current?.querySelectorAll(".abcjs-cursor");
-                cursors?.forEach(el => el.classList.remove("abcjs-cursor"));
+                const svg = paperRef.current?.querySelector("svg");
+                // Remove any existing cursor to be safe
+                const existingCursor = svg?.querySelector(".abcjs-cursor");
+                if (existingCursor) existingCursor.remove();
+
+                // Create new cursor line
+                const cursor = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                cursor.setAttribute("class", "abcjs-cursor");
+                cursor.setAttributeNS(null, 'x1', '0');
+                cursor.setAttributeNS(null, 'y1', '0');
+                cursor.setAttributeNS(null, 'x2', '0');
+                cursor.setAttributeNS(null, 'y2', '0');
+                svg?.appendChild(cursor);
             },
             onEvent: (ev: any) => {
-                // Robustly remove all previous cursors to prevent artifacts
-                const cursors = paperRef.current?.querySelectorAll(".abcjs-cursor");
-                cursors?.forEach(el => el.classList.remove("abcjs-cursor"));
+                // Ignore ties across measure lines if needed
+                if (ev.measureStart && ev.left === null) return;
 
-                // If ev is null, it signifies the end of the tune
+                // 1. Remove old selection
+                const lastSelection = paperRef.current?.querySelectorAll(".abcjs-highlight");
+                lastSelection?.forEach(el => el.classList.remove("abcjs-highlight"));
+
                 if (!ev) return;
 
-                // Select the notes currently being played
+                // 2. Highlight current notes
                 if (ev.elements) {
-                    ev.elements.forEach((el: Element) => {
-                        el.classList.add("abcjs-cursor");
+                     ev.elements.forEach((item: any) => {
+                        // Handle both single elements and arrays of elements (common in abcjs structures)
+                        if (item instanceof Element) {
+                             item.classList.add("abcjs-highlight");
+                        } else if (item.length) { 
+                             Array.from(item).forEach((subItem: any) => {
+                                 if (subItem instanceof Element) subItem.classList.add("abcjs-highlight");
+                             });
+                        }
                     });
+                }
+
+                // 3. Move Cursor Line
+                const cursor = paperRef.current?.querySelector("svg .abcjs-cursor");
+                if (cursor && typeof ev.left === 'number' && typeof ev.top === 'number' && typeof ev.height === 'number') {
+                    cursor.setAttribute("x1", (ev.left - 2).toString());
+                    cursor.setAttribute("x2", (ev.left - 2).toString());
+                    cursor.setAttribute("y1", ev.top.toString());
+                    cursor.setAttribute("y2", (ev.top + ev.height).toString());
                 }
             },
             onFinished: () => {
+                // Clean up highlights
+                const lastSelection = paperRef.current?.querySelectorAll(".abcjs-highlight");
+                lastSelection?.forEach(el => el.classList.remove("abcjs-highlight"));
+                
+                // Reset cursor
+                const cursor = paperRef.current?.querySelector("svg .abcjs-cursor");
+                if (cursor) {
+                     cursor.setAttribute("x1", "0");
+                     cursor.setAttribute("x2", "0");
+                     cursor.setAttribute("y1", "0");
+                     cursor.setAttribute("y2", "0");
+                }
+                
                 setIsPlaying(false);
                 isPlayingRef.current = false;
-                
-                const cursors = paperRef.current?.querySelectorAll(".abcjs-cursor");
-                cursors?.forEach(el => el.classList.remove("abcjs-cursor"));
             }
         };
 
@@ -166,8 +205,14 @@ export const MusicDisplay: React.FC<MusicDisplayProps> = ({ abcNotation }) => {
             isPlayingRef.current = false;
             
             // Manual cursor cleanup on stop
-            const notes = paperRef.current?.querySelectorAll(".abcjs-cursor");
-            notes?.forEach(n => n.classList.remove("abcjs-cursor"));
+            const notes = paperRef.current?.querySelectorAll(".abcjs-highlight");
+            notes?.forEach(n => n.classList.remove("abcjs-highlight"));
+
+            const cursor = paperRef.current?.querySelector("svg .abcjs-cursor");
+            if (cursor) {
+                cursor.setAttribute("x1", "0");
+                cursor.setAttribute("x2", "0");
+            }
         } catch (err) {
             console.warn("Stop error:", err);
             setIsPlaying(false);
