@@ -1,8 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { ABCResult } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const convertImageToABC = async (
   files: File[], 
   model: string,
@@ -11,6 +9,9 @@ export const convertImageToABC = async (
 ): Promise<ABCResult> => {
 
   try {
+    // Initialize AI here to prevent top-level execution crashes
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
     onLog("Initializing AI runtime environment", 'info');
     
     // 1. Image Processing
