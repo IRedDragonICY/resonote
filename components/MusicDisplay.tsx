@@ -45,7 +45,8 @@ export const MusicDisplay: React.FC<MusicDisplayProps> = ({ abcNotation, warning
                     jazzchords: true,
                     // Use clickListener to handle selection if needed
                     clickListener: (abcelem: any) => {
-                        console.log("Note clicked", abcelem);
+                        // Removed console.log to prevent "Converting circular structure to JSON" error
+                        // console.log("Note clicked", abcelem);
                     }
                 },
                 selectionChangeCallback: (start: number, end: number) => {

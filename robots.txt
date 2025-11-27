@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://resonoteai.vercel.app/sitemap.xml

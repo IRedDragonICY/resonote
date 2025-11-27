@@ -23,3 +23,8 @@ export interface GenerationState {
   result: ABCResult | null;
   logs: LogEntry[];
 }
+
+export interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
