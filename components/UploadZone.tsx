@@ -1,13 +1,20 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { UploadFileState } from '../types';
 
 interface UploadZoneProps {
   onFilesSelected: (files: File[]) => void;
   onFileRemove: (id: string) => void;
+  onFilesReordered: (files: UploadFileState[]) => void;
   currentFiles: UploadFileState[];
 }
 
-export const UploadZone: React.FC<UploadZoneProps> = ({ onFilesSelected, onFileRemove, currentFiles }) => {
+export const UploadZone: React.FC<UploadZoneProps> = ({ 
+  onFilesSelected, 
+  onFileRemove, 
+  onFilesReordered,
+  currentFiles 
+}) => {
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -28,6 +35,39 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onFilesSelected, onFileR
       const filesArray = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
       onFilesSelected(filesArray);
     }
+  };
+
+  // Reordering Logic
+  const handleItemDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    // Set a transparent image or the element itself as the drag image
+    // Optional: e.dataTransfer.setDragImage(e.currentTarget, 20, 20);
+  };
+
+  const handleItemDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault(); // Necessary to allow dropping
+    if (draggedIndex === null || draggedIndex === index) return;
+  };
+
+  const handleItemDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === targetIndex) return;
+
+    const newFiles = [...currentFiles];
+    const draggedItem = newFiles[draggedIndex];
+    
+    // Remove from old position
+    newFiles.splice(draggedIndex, 1);
+    // Insert at new position
+    newFiles.splice(targetIndex, 0, draggedItem);
+    
+    onFilesReordered(newFiles);
+    setDraggedIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
   };
 
   return (
@@ -52,15 +92,30 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onFilesSelected, onFileR
       ) : (
         <div 
           className="grid grid-cols-2 md:grid-cols-4 gap-4"
+          onDragOver={handleDragOver} // Allow dropping new files on the grid area
           onDrop={handleDrop}
-          onDragOver={handleDragOver}
         >
-          {currentFiles.map((fileState) => (
-            <div key={fileState.id} className="relative group aspect-square rounded-2xl overflow-hidden border border-md-sys-outline bg-md-sys-surface">
-              <img src={fileState.preview} alt="preview" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity select-none" />
+          {currentFiles.map((fileState, index) => (
+            <div 
+              key={fileState.id} 
+              draggable
+              onDragStart={(e) => handleItemDragStart(e, index)}
+              onDragOver={(e) => handleItemDragOver(e, index)}
+              onDrop={(e) => handleItemDrop(e, index)}
+              onDragEnd={handleDragEnd}
+              className={`relative group aspect-square rounded-2xl overflow-hidden border border-md-sys-outline bg-md-sys-surface cursor-grab active:cursor-grabbing transition-all duration-200 ${
+                draggedIndex === index ? 'opacity-40 scale-95 border-md-sys-primary border-dashed' : 'hover:border-md-sys-primary/50'
+              }`}
+            >
+              <img src={fileState.preview} alt="preview" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity select-none pointer-events-none" />
               
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-3 pointer-events-none">
-                <p className="text-xs text-white truncate w-full">{fileState.file.name}</p>
+                <p className="text-xs text-white truncate w-full">{index + 1}. {fileState.file.name}</p>
+              </div>
+
+              {/* Drag Handle Indicator (Optional visual cue) */}
+              <div className="absolute top-2 left-2 p-1 bg-black/40 rounded-lg text-white/50 group-hover:text-white transition-colors pointer-events-none">
+                 <span className="material-symbols-rounded text-[14px]">drag_indicator</span>
               </div>
 
               <button

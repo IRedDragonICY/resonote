@@ -59,6 +59,10 @@ export default function App() {
     setFiles(prev => prev.filter(f => f.id !== id));
   };
 
+  const handleReorderFiles = (newOrder: UploadFileState[]) => {
+    setFiles(newOrder);
+  };
+
   const addLog = (message: string, type: 'info' | 'success' | 'warning' | 'thinking' = 'info') => {
     const now = new Date();
     const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
@@ -271,6 +275,7 @@ export default function App() {
               <UploadZone 
                 onFilesSelected={handleFilesSelected} 
                 onFileRemove={handleRemoveFile}
+                onFilesReordered={handleReorderFiles}
                 currentFiles={files} 
               />
 
