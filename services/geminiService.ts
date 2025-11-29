@@ -35,13 +35,17 @@ export const convertImageToABC = async (
     // 1. Image Processing
     const parts = await Promise.all(
       files.map(async (file, index) => {
-        const base64Data = await fileToGenerativePart(file);
-        return {
-          inlineData: {
-            data: base64Data,
-            mimeType: file.type
-          }
-        };
+        try {
+            const base64Data = await fileToGenerativePart(file);
+            return {
+            inlineData: {
+                data: base64Data,
+                mimeType: file.type
+            }
+            };
+        } catch (e: any) {
+            throw new Error(`Failed to process image ${file.name}: ${e.message}`);
+        }
       })
     );
 
@@ -136,20 +140,15 @@ export const convertImageToABC = async (
     `;
 
     // Configure Thinking based on Model Family
-    const isGemini2 = model.includes('2.5');
-    const thinkingConfig: any = {
-        includeThoughts: true
-    };
-
-    if (isGemini2) {
-        // Configure specific budgets for 2.5 series
-        if (model.includes('flash')) {
-            thinkingConfig.thinkingBudget = 24576; // Max for Flash
-        } else {
-            thinkingConfig.thinkingBudget = 32768; // Max for Pro
-        }
-    } 
-    // For Gemini 3, we rely on the default thinking level (High) by only setting includeThoughts: true.
+    // Thinking Config is ONLY available for Gemini 2.5 series. Do not use for Gemini 3.
+    let thinkingConfig = undefined;
+    
+    if (model.includes('2.5')) {
+        thinkingConfig = {
+            includeThoughts: true,
+            thinkingBudget: model.includes('flash') ? 24576 : 32768
+        };
+    }
 
     // Initialize Chat
     const chat = ai.chats.create({
@@ -311,10 +310,32 @@ async function fileToGenerativePart(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
-      const base64String = (reader.result as string).split(',')[1];
-      resolve(base64String);
+      if (reader.error) {
+        reject(reader.error);
+        return;
+      }
+      
+      const res = reader.result as string;
+      if (!res) {
+        reject(new Error("Failed to read file: result is empty"));
+        return;
+      }
+
+      try {
+        const parts = res.split(',');
+        if (parts.length < 2) {
+             reject(new Error("Invalid Data URL format"));
+             return;
+        }
+        const base64String = parts[1];
+        resolve(base64String);
+      } catch (e) {
+        reject(e);
+      }
     };
-    reader.onerror = reject;
+    reader.onerror = () => {
+        reject(reader.error || new Error("Unknown FileReader error"));
+    };
     reader.readAsDataURL(file);
   });
 }
