@@ -5,9 +5,18 @@ interface EditorProps {
   onChange: (val: string) => void;
   warningId?: string;
   textareaId?: string;
+  onImport: () => void;
+  onExport: () => void;
 }
 
-export const Editor: React.FC<EditorProps> = ({ value, onChange, warningId, textareaId }) => {
+export const Editor: React.FC<EditorProps> = ({ 
+  value, 
+  onChange, 
+  warningId, 
+  textareaId,
+  onImport,
+  onExport
+}) => {
   const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
@@ -37,9 +46,27 @@ export const Editor: React.FC<EditorProps> = ({ value, onChange, warningId, text
 
   return (
     <div className="w-full h-full flex flex-col bg-md-sys-surface rounded-3xl border border-md-sys-outline overflow-hidden">
-      <div className="flex items-center px-6 py-4 border-b border-md-sys-outline bg-md-sys-surfaceVariant/50">
-        <span className="material-symbols-rounded text-md-sys-primary mr-3">code</span>
-        <h3 className="text-md font-medium text-white tracking-wide">ABC Notation Source</h3>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-md-sys-outline bg-md-sys-surfaceVariant/50">
+        <div className="flex items-center">
+          <span className="material-symbols-rounded text-md-sys-primary mr-3">code</span>
+          <h3 className="text-md font-medium text-white tracking-wide">ABC Notation Source</h3>
+        </div>
+        <div className="flex items-center gap-1">
+             <button 
+                onClick={onImport} 
+                className="p-2 hover:bg-white/10 rounded-lg text-md-sys-secondary hover:text-white transition-colors" 
+                title="Import Source (.abc, .txt)"
+             >
+                <span className="material-symbols-rounded text-[20px]">upload_file</span>
+             </button>
+             <button 
+                onClick={onExport} 
+                className="p-2 hover:bg-white/10 rounded-lg text-md-sys-secondary hover:text-white transition-colors" 
+                title="Export Source (.abc)"
+             >
+                <span className="material-symbols-rounded text-[20px]">download</span>
+             </button>
+        </div>
       </div>
       <div className="flex-1 relative min-h-0">
         <textarea

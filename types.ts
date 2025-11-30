@@ -28,3 +28,17 @@ export interface ValidationResult {
   isValid: boolean;
   errors: string[];
 }
+
+export interface Session {
+  id: string;
+  title: string;
+  lastModified: number;
+  data: {
+    files: UploadFileState[];
+    prompt: string;
+    abc: string;
+    model: string;
+    generation: GenerationState;
+    thumbnail?: string;
+  };
+}

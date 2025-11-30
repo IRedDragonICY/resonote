@@ -72,9 +72,12 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     
     // Only accept if we are NOT reordering items internally
     if (draggedItemIndex === null && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-       const imageFiles = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-       if (imageFiles.length > 0) {
-         onFilesSelected(imageFiles);
+       // Filter for images AND PDFs
+       const validFiles = Array.from(e.dataTransfer.files).filter(f => 
+          f.type.startsWith('image/') || f.type === 'application/pdf'
+       );
+       if (validFiles.length > 0) {
+         onFilesSelected(validFiles);
        }
     }
   }, [onFilesSelected, draggedItemIndex]);
@@ -93,7 +96,6 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     e.preventDefault();
     e.stopPropagation();
     if (draggedItemIndex === null || draggedItemIndex === index) return;
-    // We can add specific visual cues here if needed
   };
 
   const handleItemDrop = (e: React.DragEvent, targetIndex: number) => {
@@ -122,8 +124,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const imageFiles = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
-      onFilesSelected(imageFiles);
+      // Filter for images AND PDFs
+      const validFiles = Array.from(e.target.files).filter(f => 
+         f.type.startsWith('image/') || f.type === 'application/pdf'
+      );
+      onFilesSelected(validFiles);
     }
   };
 
@@ -156,7 +161,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                 <div className="absolute inset-0 bg-md-sys-primary/10 z-50 flex items-center justify-center backdrop-blur-sm pointer-events-none">
                     <div className="bg-[#1E1E1E] px-4 py-2 rounded-lg border border-md-sys-primary/30 text-md-sys-primary font-medium flex items-center gap-2 shadow-xl">
                         <span className="material-symbols-rounded">cloud_upload</span>
-                        Drop images to attach
+                        Drop images or PDFs
                     </div>
                 </div>
             )}
@@ -181,7 +186,13 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                                 }
                             `}
                         >
-                            <img src={file.preview} alt="attachment" className="w-full h-full object-cover opacity-80 group-hover/file:opacity-100 transition-opacity pointer-events-none select-none" />
+                            {file.file.type === 'application/pdf' || file.file.name.toLowerCase().endsWith('.pdf') ? (
+                                <div className="w-full h-full bg-[#2a1b1b] flex flex-col items-center justify-center p-2 transition-colors group-hover/file:bg-[#3d2424]">
+                                    <span className="material-symbols-rounded text-red-400 text-3xl">picture_as_pdf</span>
+                                </div>
+                            ) : (
+                                <img src={file.preview} alt="attachment" className="w-full h-full object-cover opacity-80 group-hover/file:opacity-100 transition-opacity pointer-events-none select-none" />
+                            )}
                             
                             {/* Drag Handle Overlay */}
                             <div className="absolute inset-0 bg-black/0 group-hover/file:bg-black/10 transition-colors pointer-events-none" />
@@ -215,7 +226,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                 value={promptText}
                 onChange={(e) => onPromptChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Describe your music or drag & drop sheet music..."
+                placeholder="Describe your music or drag & drop sheet music (PDF/Image)..."
                 className="w-full bg-transparent text-[13px] text-gray-200 placeholder:text-gray-500 p-4 min-h-[100px] max-h-[400px] resize-none focus:outline-none leading-relaxed font-sans"
             />
 
@@ -248,10 +259,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                     <button 
                         onClick={() => fileInputRef.current?.click()}
                         className="p-1.5 text-gray-500 hover:text-gray-200 hover:bg-[#2A2A2A] rounded-md transition-all tooltip-trigger relative group/btn"
-                        title="Attach image"
+                        title="Attach image or PDF"
                     >
                          <span className="material-symbols-rounded text-[20px]">add_photo_alternate</span>
-                         <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*" onChange={handleFileInputChange} />
+                         {/* Accept Images AND PDF */}
+                         <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*,application/pdf" onChange={handleFileInputChange} />
                     </button>
                 </div>
 
@@ -303,7 +315,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
         {/* Logs */}
         <AILogger logs={logs} visible={logs.length > 0} />
 
-        {/* Image Preview Modal */}
+        {/* File Preview Modal */}
         {previewFile && (
             <div 
                 className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-8 animate-in fade-in duration-200"
@@ -315,18 +327,29 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                 </button>
 
                 <div 
-                    className="max-w-full max-h-full flex flex-col items-center gap-4 relative animate-in zoom-in-95 duration-200" 
+                    className="w-full h-full max-w-6xl max-h-[90vh] flex flex-col items-center gap-4 relative animate-in zoom-in-95 duration-200" 
                     onClick={e => e.stopPropagation()}
                 >
-                    <img 
-                        src={previewFile.preview} 
-                        alt="Full size preview" 
-                        className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl border border-white/10" 
-                    />
-                    <div className="text-center px-4 py-2 bg-black/50 backdrop-blur-sm rounded-full border border-white/5">
+                    {previewFile.file.type === 'application/pdf' || previewFile.file.name.toLowerCase().endsWith('.pdf') ? (
+                        <div className="w-full h-full bg-[#1E1E1E] rounded-lg overflow-hidden border border-white/10 shadow-2xl">
+                            <embed 
+                                src={previewFile.preview} 
+                                type="application/pdf" 
+                                className="w-full h-full"
+                            />
+                        </div>
+                    ) : (
+                        <img 
+                            src={previewFile.preview} 
+                            alt="Full size preview" 
+                            className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl border border-white/10" 
+                        />
+                    )}
+                    
+                    <div className="text-center px-4 py-2 bg-black/50 backdrop-blur-sm rounded-full border border-white/5 absolute bottom-4">
                         <p className="text-white font-medium text-sm">{previewFile.file.name}</p>
                         <p className="text-gray-400 text-xs mt-0.5">
-                            {(previewFile.file.size / 1024).toFixed(1)} KB
+                            {(previewFile.file.size / 1024).toFixed(1)} KB • {previewFile.file.type || 'application/pdf'}
                         </p>
                     </div>
                 </div>

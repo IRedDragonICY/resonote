@@ -34,19 +34,25 @@ export const convertImageToABC = async (
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // 1. Image Processing
+    // 1. Image/PDF Processing
     const parts = await Promise.all(
       files.map(async (file, index) => {
         try {
             const base64Data = await fileToGenerativePart(file);
-            return {
-            inlineData: {
-                data: base64Data,
-                mimeType: file.type
+            // Robust MIME type detection for PDF support
+            let mimeType = file.type;
+            if (!mimeType && file.name.toLowerCase().endsWith('.pdf')) {
+                mimeType = 'application/pdf';
             }
+
+            return {
+              inlineData: {
+                  data: base64Data,
+                  mimeType: mimeType || 'image/png' // Fallback
+              }
             };
         } catch (e: any) {
-            throw new Error(`Failed to process image ${file.name}: ${e.message}`);
+            throw new Error(`Failed to process input ${file.name}: ${e.message}`);
         }
       })
     );
@@ -83,6 +89,9 @@ export const convertImageToABC = async (
 
     // Construct the initial message
     let instructionText = "Transcribe this sheet music to ABC notation (Standard 2.1). Be extremely precise with pitch, rhythm, and lyric alignment. Ensure strict syntax compliance.";
+
+    // CRITICAL: Force Visual OMR instruction for PDFs
+    instructionText += "\n\nCRITICAL: Analyze the input purely visually (Optical Music Recognition). Treat PDFs as a sequence of images. Do not rely on embedded text layers as they may be corrupt or misaligned. Trust the visual positioning of note heads, stems, and lyrics on the page.";
 
     if (files.length === 0) {
         // If no images, use the prompt as the main instruction

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useImperativeHandle } from 'react';
+import React, { useEffect, useRef, useImperativeHandle, useCallback, useState } from 'react';
 import abcjs from 'abcjs';
 import { jsPDF } from 'jspdf';
 
@@ -6,19 +6,34 @@ interface MusicDisplayProps {
   abcNotation: string;
   warningId?: string;
   textareaId: string;
+  onThumbnailGenerated?: (base64: string) => void;
 }
 
 export interface MusicDisplayHandle {
-  exportFile: (type: 'png' | 'pdf' | 'midi') => void;
+  exportFile: (type: 'png' | 'pdf' | 'midi' | 'wav' | 'mp3') => void;
 }
 
-export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayProps>(({ abcNotation, warningId, textareaId }, ref) => {
+export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayProps>(({ 
+  abcNotation, 
+  warningId, 
+  textareaId,
+  onThumbnailGenerated
+}, ref) => {
   // Use stable IDs for the DOM elements
   const uniqueId = useRef(Math.random().toString(36).substr(2, 9)).current;
   const paperId = `abc-paper-${uniqueId}`;
   const audioId = `abc-audio-${uniqueId}`;
   
   const editorRef = useRef<any>(null);
+  const thumbnailTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const [exportingState, setExportingState] = useState<string | null>(null);
+
+  // Stable ref for the callback to prevent re-triggering effects on prop changes
+  const onThumbnailGeneratedRef = useRef(onThumbnailGenerated);
+  useEffect(() => {
+    onThumbnailGeneratedRef.current = onThumbnailGenerated;
+  }, [onThumbnailGenerated]);
 
   useEffect(() => {
     let retryCount = 0;
@@ -164,75 +179,329 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
      }
   }, [abcNotation, textareaId]);
 
-  const handleExport = (type: 'png' | 'pdf' | 'midi') => {
+  // --- Auto Thumbnail Generation ---
+  const generateThumbnail = useCallback(() => {
+    const callback = onThumbnailGeneratedRef.current;
+    if (!callback) return;
+
+    const paper = document.getElementById(paperId);
+    if (!paper) return;
+
+    const svg = paper.querySelector("svg");
+    if (!svg) return;
+
+    // Clone to avoid modifying the visible SVG
+    const svgClone = svg.cloneNode(true) as SVGElement;
+    
+    // Inject Styles to ensure black-on-white rendering
+    const style = document.createElement("style");
+    style.textContent = `
+      text, tspan, path { fill: #000000 !important; }
+      path[stroke] { stroke: #000000 !important; fill: none !important; }
+      .abcjs-cursor, .abcjs-highlight { opacity: 0 !important; } 
+    `;
+    svgClone.prepend(style);
+
+    const svgData = new XMLSerializer().serializeToString(svgClone);
+    const canvas = document.createElement('canvas');
+    const img = new Image();
+    
+    // Determine Dimensions
+    // CRITICAL FIX: getBoundingClientRect returns 0 if element is hidden (display: none).
+    // We must fallback to viewBox or reasonable defaults.
+    const rect = svg.getBoundingClientRect();
+    let width = rect.width;
+    let height = rect.height;
+
+    // Fallback: Try to get dimensions from viewBox
+    if (width === 0 || height === 0) {
+        const viewBox = svg.getAttribute('viewBox');
+        if (viewBox) {
+            const parts = viewBox.split(' ').map(parseFloat);
+            if (parts.length === 4) {
+                width = parts[2];
+                height = parts[3];
+            }
+        }
+    }
+
+    // Fallback: If still 0 (e.g. empty SVG), default to A4 ratio
+    if (!width || width === 0) width = 595;
+    if (!height || height === 0) height = 842;
+
+    // Target thumbnail width (fixed width, responsive height)
+    const targetWidth = 400;
+    const scale = targetWidth / width;
+    const targetHeight = height * scale;
+
+    img.onload = () => {
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            // White background
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            // Export as low-quality JPEG for small size
+            const base64 = canvas.toDataURL('image/jpeg', 0.6);
+            callback(base64);
+        }
+    };
+    
+    // Encode SVG data safely
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+
+  }, [paperId]);
+
+  // Observer to detect when ABCJS finishes rendering the SVG
+  useEffect(() => {
+    const paper = document.getElementById(paperId);
+    if (!paper) return;
+
+    const observer = new MutationObserver((mutations) => {
+        // Debounce thumbnail generation
+        if (thumbnailTimeoutRef.current) {
+            clearTimeout(thumbnailTimeoutRef.current);
+        }
+        
+        thumbnailTimeoutRef.current = setTimeout(() => {
+            generateThumbnail();
+        }, 1500); // 1.5s delay to let rendering settle and avoid rapid updates
+    });
+    
+    observer.observe(paper, { childList: true, subtree: true, attributes: true });
+
+    return () => {
+        observer.disconnect();
+        if (thumbnailTimeoutRef.current) clearTimeout(thumbnailTimeoutRef.current);
+    };
+  }, [paperId, generateThumbnail]);
+
+
+  const handleExport = async (type: 'png' | 'pdf' | 'midi' | 'wav' | 'mp3') => {
       const svg = document.querySelector(`#${paperId} svg`);
-      if (!svg && type !== 'midi') return;
+      // Only require SVG for visual export. Audio/MIDI uses the data directly.
+      if (!svg && type !== 'midi' && type !== 'wav' && type !== 'mp3') return;
 
-      if (type === 'png') {
-          const svgData = new XMLSerializer().serializeToString(svg!);
-          const canvas = document.createElement('canvas');
-          const img = new Image();
-          const svgEl = svg as SVGElement;
-          const rect = svgEl.getBoundingClientRect();
-          
-          img.onload = () => {
-              // High resolution export
-              canvas.width = rect.width * 2;
-              canvas.height = rect.height * 2;
-              const ctx = canvas.getContext('2d');
-              if(ctx) {
-                  ctx.fillStyle = "#FFFFFF";
-                  ctx.fillRect(0,0, canvas.width, canvas.height);
-                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                  const a = document.createElement('a');
-                  a.href = canvas.toDataURL('image/png');
-                  a.download = 'sheet_music.png';
-                  a.click();
-              }
-          };
-          img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
-      } 
-      else if (type === 'pdf') {
-          const svgData = new XMLSerializer().serializeToString(svg!);
-          const img = new Image();
-          const svgEl = svg as SVGElement;
-          const rect = svgEl.getBoundingClientRect();
+      if (exportingState) return;
+      setExportingState(type);
 
-          img.onload = () => {
-              // Create PDF matching the aspect ratio
-              const doc = new jsPDF({
-                  orientation: rect.width > rect.height ? 'l' : 'p',
-                  unit: 'px',
-                  format: [rect.width + 40, rect.height + 40]
-              });
-              
-              const canvas = document.createElement('canvas');
-              canvas.width = rect.width * 2;
-              canvas.height = rect.height * 2;
-              const ctx = canvas.getContext('2d');
-              if(ctx) {
-                  ctx.fillStyle = "#FFFFFF";
-                  ctx.fillRect(0,0, canvas.width, canvas.height);
-                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                  const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                  doc.addImage(imgData, 'JPEG', 20, 20, rect.width, rect.height);
-                  doc.save('sheet_music.pdf');
-              }
-          };
-          img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
-      }
-      else if (type === 'midi') {
-          const midi = abcjs.synth.getMidiFile(abcNotation, { midiOutputType: 'link' });
-          if(midi && midi.length > 0) {
-              const a = document.createElement('a');
-              a.href = midi[0].href;
-              a.download = 'music.midi';
-              a.click();
-          }
+      try {
+        if (type === 'png') {
+            const svgData = new XMLSerializer().serializeToString(svg!);
+            const canvas = document.createElement('canvas');
+            const img = new Image();
+            const svgEl = svg as SVGElement;
+            
+            // Get dimensions, using fallback for hidden tabs
+            let rect = svgEl.getBoundingClientRect();
+            let width = rect.width;
+            let height = rect.height;
+            
+            if (width === 0) {
+                const viewBox = svgEl.getAttribute('viewBox');
+                if (viewBox) {
+                    const parts = viewBox.split(' ').map(parseFloat);
+                    if (parts.length === 4) {
+                        width = parts[2];
+                        height = parts[3];
+                    }
+                }
+            }
+            if (width === 0) { width = 595; height = 842; }
+
+            img.onload = () => {
+                // High resolution export
+                canvas.width = width * 2;
+                canvas.height = height * 2;
+                const ctx = canvas.getContext('2d');
+                if(ctx) {
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.fillRect(0,0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const a = document.createElement('a');
+                    a.href = canvas.toDataURL('image/png');
+                    a.download = 'sheet_music.png';
+                    a.click();
+                }
+            };
+            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+        } 
+        else if (type === 'pdf') {
+            const svgData = new XMLSerializer().serializeToString(svg!);
+            const img = new Image();
+            const svgEl = svg as SVGElement;
+            
+            let rect = svgEl.getBoundingClientRect();
+            let width = rect.width;
+            let height = rect.height;
+
+            if (width === 0) {
+                const viewBox = svgEl.getAttribute('viewBox');
+                if (viewBox) {
+                    const parts = viewBox.split(' ').map(parseFloat);
+                    if (parts.length === 4) {
+                        width = parts[2];
+                        height = parts[3];
+                    }
+                }
+            }
+            if (width === 0) { width = 595; height = 842; }
+
+            img.onload = () => {
+                // Create PDF matching the aspect ratio
+                const doc = new jsPDF({
+                    orientation: width > height ? 'l' : 'p',
+                    unit: 'px',
+                    format: [width + 40, height + 40]
+                });
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = width * 2;
+                canvas.height = height * 2;
+                const ctx = canvas.getContext('2d');
+                if(ctx) {
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.fillRect(0,0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    doc.addImage(imgData, 'JPEG', 20, 20, width, height);
+                    doc.save('sheet_music.pdf');
+                }
+            };
+            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+        }
+        else if (type === 'midi') {
+            const midi = abcjs.synth.getMidiFile(abcNotation, { midiOutputType: 'link' });
+            if(midi && midi.length > 0) {
+                const a = document.createElement('a');
+                a.href = midi[0].href;
+                a.download = 'music.midi';
+                a.click();
+            }
+        }
+        else if (type === 'wav' || type === 'mp3') {
+            try {
+                // 1. Try to use the live editor visual object first
+                let visualObj = editorRef.current?.tunes?.[0];
+
+                // 2. Fallback: Render headless if necessary
+                if (!visualObj) {
+                    const div = document.createElement("div");
+                    div.style.width = "1024px"; 
+                    div.style.height = "1024px";
+                    const visualObjs = abcjs.renderAbc(div, abcNotation, {
+                        responsive: 'resize',
+                        add_classes: true,
+                        visualTranspose: 0 
+                    });
+                    visualObj = visualObjs[0];
+                }
+
+                if (!visualObj) {
+                    throw new Error("Could not parse music data.");
+                }
+
+                // 3. Initialize Synth
+                const synth = new abcjs.synth.CreateSynth();
+                await synth.init({ 
+                    visualObj: visualObj,
+                    options: {
+                        soundFontUrl: "https://paulrosen.github.io/midi-js-soundfonts/FluidR3_GM/"
+                    }
+                });
+                
+                await synth.prime();
+
+                // 4. Handle Export
+                if (type === 'wav') {
+                     const audioUrl = (synth as any).download();
+                     if (audioUrl && typeof audioUrl === 'string') {
+                         const a = document.createElement('a');
+                         a.href = audioUrl;
+                         a.download = 'composition.wav';
+                         document.body.appendChild(a);
+                         a.click();
+                         document.body.removeChild(a);
+                         setTimeout(() => window.URL.revokeObjectURL(audioUrl), 5000);
+                     }
+                } else if (type === 'mp3') {
+                    // 5. Handle MP3 Conversion
+                    if (!(window as any).lamejs) {
+                         throw new Error("MP3 Encoder library not loaded.");
+                    }
+
+                    const buffer = (synth as any).getAudioBuffer();
+                    if (!buffer) throw new Error("No audio buffer generated.");
+
+                    const mp3Data = convertBufferToMp3(buffer);
+                    const blob = new Blob(mp3Data, { type: 'audio/mp3' });
+                    const url = window.URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'composition.mp3';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+                }
+
+            } catch (err: any) {
+                console.error("Audio Export Failed:", err);
+                alert("Could not generate audio file. " + (err.message || "Unknown error"));
+            }
+        }
+      } catch (e: any) {
+        console.error("Export error", e);
+        alert("Export failed: " + e.message);
+      } finally {
+        setExportingState(null);
       }
   };
 
-  // Expose the export function to parent components
+  const convertBufferToMp3 = (buffer: AudioBuffer) => {
+    const lamejs = (window as any).lamejs;
+    const channels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const kbps = 128;
+    const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
+    const mp3Data = [];
+
+    // Helper: Float32 to Int16
+    const convert = (input: Float32Array) => {
+        const output = new Int16Array(input.length);
+        for (let i = 0; i < input.length; i++) {
+             const s = Math.max(-1, Math.min(1, input[i]));
+             output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+        return output;
+    };
+
+    const left = convert(buffer.getChannelData(0));
+    const right = channels > 1 ? convert(buffer.getChannelData(1)) : undefined;
+    
+    // Encode in chunks
+    const sampleBlockSize = 1152;
+    for (let i = 0; i < left.length; i += sampleBlockSize) {
+        const leftChunk = left.subarray(i, i + sampleBlockSize);
+        const rightChunk = right ? right.subarray(i, i + sampleBlockSize) : undefined;
+        
+        const mp3buf = mp3encoder.encodeBuffer(leftChunk, rightChunk || leftChunk);
+        if (mp3buf.length > 0) {
+            mp3Data.push(mp3buf);
+        }
+    }
+    
+    const mp3buf = mp3encoder.flush();
+    if (mp3buf.length > 0) {
+        mp3Data.push(mp3buf);
+    }
+    return mp3Data;
+  };
+
   useImperativeHandle(ref, () => ({
     exportFile: handleExport
   }));
@@ -246,14 +515,45 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
             </div>
             
             <div className="flex items-center gap-1">
-                <button onClick={() => handleExport('png')} className="p-2 hover:bg-black/5 rounded text-md-sys-secondary hover:text-black transition-colors" title="Export PNG">
-                    <span className="material-symbols-rounded text-lg">image</span>
+                <button 
+                    onClick={() => handleExport('png')} 
+                    disabled={!!exportingState}
+                    className="p-2 hover:bg-black/5 rounded text-md-sys-secondary hover:text-black transition-colors disabled:opacity-50" 
+                    title="Export PNG"
+                >
+                    {exportingState === 'png' ? <span className="material-symbols-rounded text-lg animate-spin">progress_activity</span> : <span className="material-symbols-rounded text-lg">image</span>}
                 </button>
-                <button onClick={() => handleExport('pdf')} className="p-2 hover:bg-black/5 rounded text-md-sys-secondary hover:text-black transition-colors" title="Export PDF">
-                    <span className="material-symbols-rounded text-lg">picture_as_pdf</span>
+                <button 
+                    onClick={() => handleExport('pdf')} 
+                    disabled={!!exportingState}
+                    className="p-2 hover:bg-black/5 rounded text-md-sys-secondary hover:text-black transition-colors disabled:opacity-50" 
+                    title="Export PDF"
+                >
+                    {exportingState === 'pdf' ? <span className="material-symbols-rounded text-lg animate-spin">progress_activity</span> : <span className="material-symbols-rounded text-lg">picture_as_pdf</span>}
                 </button>
-                 <button onClick={() => handleExport('midi')} className="p-2 hover:bg-black/5 rounded text-md-sys-secondary hover:text-black transition-colors" title="Download MIDI">
-                    <span className="material-symbols-rounded text-lg">piano</span>
+                 <button 
+                    onClick={() => handleExport('midi')} 
+                    disabled={!!exportingState}
+                    className="p-2 hover:bg-black/5 rounded text-md-sys-secondary hover:text-black transition-colors disabled:opacity-50" 
+                    title="Download MIDI"
+                >
+                    {exportingState === 'midi' ? <span className="material-symbols-rounded text-lg animate-spin">progress_activity</span> : <span className="material-symbols-rounded text-lg">piano</span>}
+                </button>
+                <button 
+                    onClick={() => handleExport('wav')} 
+                    disabled={!!exportingState}
+                    className="p-2 hover:bg-black/5 rounded text-md-sys-secondary hover:text-black transition-colors disabled:opacity-50" 
+                    title="Download Audio (.wav)"
+                >
+                    {exportingState === 'wav' ? <span className="material-symbols-rounded text-lg animate-spin">progress_activity</span> : <span className="material-symbols-rounded text-lg">headphones</span>}
+                </button>
+                <button 
+                    onClick={() => handleExport('mp3')} 
+                    disabled={!!exportingState}
+                    className="p-2 hover:bg-black/5 rounded text-md-sys-secondary hover:text-black transition-colors disabled:opacity-50" 
+                    title="Download Audio (.mp3)"
+                >
+                    {exportingState === 'mp3' ? <span className="material-symbols-rounded text-lg animate-spin">progress_activity</span> : <span className="material-symbols-rounded text-lg">music_note</span>}
                 </button>
             </div>
         </div>

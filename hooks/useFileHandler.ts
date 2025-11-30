@@ -33,20 +33,22 @@ export const useFileHandler = () => {
       if (!e.clipboardData || !e.clipboardData.items) return;
 
       const items = Array.from(e.clipboardData.items);
-      const imageFiles: File[] = [];
+      const validFiles: File[] = [];
 
       for (const item of items) {
-        // Only accept images
-        if (item.kind === 'file' && item.type.startsWith('image/')) {
-          const file = item.getAsFile();
-          if (file) imageFiles.push(file);
+        if (item.kind === 'file') {
+          // Allow Images AND PDF
+          if (item.type.startsWith('image/') || item.type === 'application/pdf') {
+             const file = item.getAsFile();
+             if (file) validFiles.push(file);
+          }
         }
       }
 
-      // If we found images, add them and prevent default paste (which might paste text if mixed)
-      if (imageFiles.length > 0) {
+      // If we found valid files, add them and prevent default paste (which might paste text if mixed)
+      if (validFiles.length > 0) {
         e.preventDefault();
-        handleFilesSelected(imageFiles);
+        handleFilesSelected(validFiles);
       }
     };
 
