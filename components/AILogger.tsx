@@ -6,59 +6,64 @@ interface AILoggerProps {
   visible: boolean;
 }
 
-// Robust Markdown Formatter
-const MarkdownText: React.FC<{ text: string }> = ({ text }) => {
+// Robust Markdown Formatter with Optimized Animation Logic
+const MarkdownText: React.FC<{ text: string; isStreaming?: boolean }> = ({ text, isStreaming }) => {
   const lines = text.split('\n');
+
+  // Efficiently find the starting index of the *last* thought section.
+  // If streaming, we animate from the last detected header downwards.
+  // If not streaming, we set index to Infinity so nothing animates.
+  const animationStartIndex = isStreaming 
+    ? lines.reduce((lastIdx, line, idx) => {
+        const trimmed = line.trim();
+        // Detect Headers: **Bold**, ## Markdown Header, or *ItalicStart* (excluding lists '* ')
+        if (trimmed.startsWith('**') || trimmed.startsWith('##') || (trimmed.startsWith('*') && !trimmed.startsWith('* '))) {
+          return idx;
+        }
+        return lastIdx;
+      }, 0)
+    : Infinity;
 
   return (
     <>
-      {lines.map((line, i) => (
-        <div key={i} className={`min-h-[1.2em] ${line.trim() === '' ? 'h-2' : ''} whitespace-pre-wrap`}>
-          {/* 
-            Regex to capture:
-            1. **Bold**
-            2. *Italic*
-            3. `Code`
-            4. "Quotes"
-          */}
-          {line.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|".*?")/g).map((part, j) => {
-            // Bold
-            if (part.startsWith('**') && part.endsWith('**')) {
-              return (
-                <strong key={j} className="text-white font-bold">
-                  {part.slice(2, -2)}
-                </strong>
-              );
-            }
-            // Italic
-            if (part.startsWith('*') && part.endsWith('*')) {
-              return (
-                <em key={j} className="text-md-sys-tertiary italic">
-                  {part.slice(1, -1)}
-                </em>
-              );
-            }
-            // Inline Code
-            if (part.startsWith('`') && part.endsWith('`')) {
-              return (
-                <code key={j} className="bg-white/10 px-1.5 py-0.5 rounded text-amber-300 font-mono text-[11px] font-bold mx-0.5 border border-white/5">
-                  {part.slice(1, -1)}
-                </code>
-              );
-            }
-            // Quotes (Double or Single)
-            if ((part.startsWith('"') && part.endsWith('"')) || (part.startsWith("'") && part.endsWith("'"))) {
-              return (
-                <span key={j} className="text-emerald-300">
-                  {part}
-                </span>
-              );
-            }
-            // Regular Text
-            return <span key={j}>{part}</span>;
-          })}
-        </div>
-      ))}
+      {lines.map((line, i) => {
+        // Only animate if this line is part of the active section
+        const shouldPulse = i >= animationStartIndex;
+
+        return (
+          <div 
+            key={i} 
+            className={`min-h-[1.2em] ${line.trim() === '' ? 'h-2' : ''} whitespace-pre-wrap transition-opacity duration-300 ${shouldPulse ? 'animate-pulse' : ''}`}
+          >
+            {/* 
+              Parser for:
+              1. **Bold**
+              2. *Italic*
+              3. `Code`
+              4. "Quotes"
+            */}
+            {line.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|".*?")/g).map((part, j) => {
+              if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={j} className="text-white font-bold">{part.slice(2, -2)}</strong>;
+              }
+              if (part.startsWith('*') && part.endsWith('*')) {
+                return <em key={j} className="text-md-sys-tertiary italic">{part.slice(1, -1)}</em>;
+              }
+              if (part.startsWith('`') && part.endsWith('`')) {
+                return (
+                  <code key={j} className="bg-white/10 px-1.5 py-0.5 rounded text-amber-300 font-mono text-[11px] font-bold mx-0.5 border border-white/5">
+                    {part.slice(1, -1)}
+                  </code>
+                );
+              }
+              if ((part.startsWith('"') && part.endsWith('"')) || (part.startsWith("'") && part.endsWith("'"))) {
+                return <span key={j} className="text-emerald-300">{part}</span>;
+              }
+              return <span key={j}>{part}</span>;
+            })}
+          </div>
+        );
+      })}
     </>
   );
 };
@@ -88,24 +93,29 @@ export const AILogger: React.FC<AILoggerProps> = ({ logs, visible }) => {
         ref={scrollRef}
         className="p-4 max-h-[300px] overflow-y-auto font-mono text-xs space-y-3 scroll-smooth"
       >
-        {logs.map((log, idx) => (
-          <div key={idx} className="flex gap-3 group">
-            <span className="text-md-sys-outline shrink-0 opacity-40 select-none pt-0.5 text-[10px] w-[50px]">{log.timestamp}</span>
-            <div className={`flex-1 break-words leading-relaxed ${
-              log.type === 'warning' ? 'text-red-400' :
-              log.type === 'success' ? 'text-emerald-400' :
-              log.type === 'thinking' ? 'text-md-sys-primary' :
-              'text-md-sys-secondary'
-            }`}>
-              <div className="flex gap-2">
-                <span className={`opacity-50 mt-[1px] ${log.type === 'thinking' ? 'animate-pulse text-md-sys-primary' : 'text-md-sys-outline'}`}>{'>'}</span>
-                <div className={log.type === 'thinking' ? 'animate-pulse' : ''}>
-                    <MarkdownText text={log.message} />
+        {logs.map((log, idx) => {
+          const isLatest = idx === logs.length - 1;
+          const isStreaming = log.type === 'thinking' && isLatest;
+
+          return (
+            <div key={idx} className="flex gap-3 group">
+              <span className="text-md-sys-outline shrink-0 opacity-40 select-none pt-0.5 text-[10px] w-[50px]">{log.timestamp}</span>
+              <div className={`flex-1 break-words leading-relaxed ${
+                log.type === 'warning' ? 'text-red-400' :
+                log.type === 'success' ? 'text-emerald-400' :
+                log.type === 'thinking' ? 'text-md-sys-primary' :
+                'text-md-sys-secondary'
+              }`}>
+                <div className="flex gap-2">
+                  <span className={`opacity-50 mt-[1px] ${isStreaming ? 'animate-pulse text-md-sys-primary' : 'text-md-sys-outline'}`}>{'>'}</span>
+                  <div className="flex-1">
+                      <MarkdownText text={log.message} isStreaming={isStreaming} />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {visible && logs.length > 0 && logs[logs.length-1].type !== 'success' && logs[logs.length-1].type !== 'warning' && (
            <div className="flex gap-3 animate-pulse opacity-50 pl-[74px]">
              <span className="text-md-sys-primary">_</span>
