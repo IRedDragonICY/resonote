@@ -33,6 +33,7 @@ export interface Session {
   id: string;
   title: string;
   lastModified: number;
+  isOpen?: boolean; // Tracks if the session is currently open in a tab
   data: {
     files: UploadFileState[];
     prompt: string;

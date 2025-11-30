@@ -43,6 +43,9 @@ export default function App() {
         // Hydrate: Ensure files array is empty (can't restore Files) but logs/abc are kept
         const hydrated = parsed.map(s => ({
             ...s,
+            // Default isOpen to false for legacy data to keep top bar clean on fresh load, 
+            // or respect persisted state if present.
+            isOpen: s.isOpen ?? false, 
             data: {
                 ...s.data,
                 files: [], // Files cannot be persisted securely
@@ -69,6 +72,9 @@ export default function App() {
             }
         }));
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    } else {
+        // If no sessions, clear storage to reflect empty state
+        localStorage.removeItem(STORAGE_KEY);
     }
   }, [sessions]);
 
@@ -84,6 +90,7 @@ export default function App() {
         id: Date.now().toString(),
         title: title || `Untitled Project`,
         lastModified: Date.now(),
+        isOpen: true, // New sessions are open by default
         data: {
             files: [],
             prompt: "",
@@ -101,13 +108,34 @@ export default function App() {
     setActiveTabId(newSession.id);
   }, []);
 
-  const closeSession = (id: string, e: React.MouseEvent) => {
+  const closeSessionTab = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSessions(prev => prev.filter(s => s.id !== id));
+    // Close the tab by setting isOpen to false, but keep in sessions list
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, isOpen: false } : s));
+    
+    // Cleanup refs to avoid memory leaks
     sessionRefs.current.delete(id);
+
+    // Navigate to home if the closed tab was active
     if (activeTabId === id) {
         setActiveTabId('home');
     }
+  };
+
+  const handleOpenSession = (id: string) => {
+    // Re-open a closed session
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, isOpen: true } : s));
+    setActiveTabId(id);
+  };
+
+  const deleteSession = (id: string) => {
+      if (window.confirm("Are you sure you want to permanently delete this project? This cannot be undone.")) {
+          setSessions(prev => prev.filter(s => s.id !== id));
+          sessionRefs.current.delete(id);
+          if (activeTabId === id) {
+              setActiveTabId('home');
+          }
+      }
   };
 
   const updateSession = useCallback((id: string, updates: Partial<Session['data']>) => {
@@ -140,8 +168,10 @@ export default function App() {
   const handleTabsReorder = (newOrderIds: string[]) => {
     setSessions(prev => {
         const sessionMap = new Map(prev.map(s => [s.id, s]));
-        const reordered = newOrderIds.map(id => sessionMap.get(id)).filter(Boolean) as Session[];
-        return reordered;
+        // Reconstruct order based on Tabs, append closed sessions at the end (order doesn't matter for hidden)
+        const reorderedOpen = newOrderIds.map(id => sessionMap.get(id)).filter(Boolean) as Session[];
+        const closed = prev.filter(s => !s.isOpen);
+        return [...reorderedOpen, ...closed];
     });
   };
 
@@ -297,8 +327,40 @@ export default function App() {
     }
   };
 
+  // Function to export session source/media directly from HomeView
+  const handleExportFromHome = (sessionId: string, type: 'png' | 'pdf' | 'midi' | 'wav' | 'mp3' | 'abc' | 'txt') => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    // Text formats - handled directly here
+    if (type === 'abc' || type === 'txt') {
+        const blob = new Blob([session.data.abc], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${session.title || 'music'}.${type}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+    }
+
+    // Media formats - delegate to MusicDisplay logic via Ref
+    // Note: MusicDisplay components are mounted but hidden, so refs should be available.
+    const ref = sessionRefs.current.get(sessionId);
+    if (ref) {
+        ref.exportFile(type);
+    } else {
+        alert("Unable to export media. Please open the project first to initialize the engine.");
+    }
+  };
+
   // --- Rendering ---
   
+  // Filter active tabs for the top bar
+  const openSessions = sessions.filter(s => s.isOpen);
+
   return (
     <div className="min-h-screen bg-md-sys-background text-md-sys-secondary selection:bg-md-sys-primary selection:text-md-sys-onPrimary font-sans flex flex-col overflow-hidden">
       
@@ -322,12 +384,12 @@ export default function App() {
         onExport={handleExport}
       />
 
-      {/* Tabs - Fixed Top Bar */}
+      {/* Tabs - Fixed Top Bar (Only show Open Sessions) */}
       <TabBar 
-        tabs={sessions.map(s => ({ id: s.id, title: s.title }))} 
+        tabs={openSessions.map(s => ({ id: s.id, title: s.title }))} 
         activeTabId={activeTabId}
         onTabClick={setActiveTabId}
-        onTabClose={closeSession}
+        onTabClose={closeSessionTab}
         onNewTab={() => createNewSession()}
         onTabsReorder={handleTabsReorder}
         onTabRename={handleTabRename}
@@ -340,13 +402,15 @@ export default function App() {
         <div className={`absolute inset-0 top-20 z-10 bg-md-sys-background transition-opacity duration-200 ${activeTabId === 'home' ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
              <HomeView 
                 sessions={sessions} 
-                onOpenSession={setActiveTabId} 
+                onOpenSession={handleOpenSession} 
                 onNewSession={() => createNewSession()} 
+                onDeleteSession={deleteSession}
+                onExportSession={handleExportFromHome}
              />
         </div>
 
-        {/* Render Workspaces for ALL open sessions - Keep them mounted to persist audio/state */}
-        {sessions.map(session => (
+        {/* Render Workspaces for OPEN sessions - Keep them mounted to persist audio/state */}
+        {openSessions.map(session => (
             <div 
                 key={session.id} 
                 className={`w-full h-full pt-4 pb-2 px-4 lg:px-6 max-w-[1920px] mx-auto ${activeTabId === session.id ? 'block' : 'hidden'}`}
