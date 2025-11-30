@@ -28,11 +28,19 @@ export const convertImageToABC = async (
   model: string,
   onLog: (message: string, type?: 'info' | 'success' | 'warning' | 'thinking') => void,
   onStreamUpdate: (text: string) => void,
-  validatorFn: (abc: string) => ValidationResult
+  validatorFn: (abc: string) => ValidationResult,
+  apiKey?: string // Optional custom API key
 ): Promise<ABCResult> => {
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Priority: User Custom Key -> Environment Key
+    const effectiveKey = apiKey && apiKey.trim() !== '' ? apiKey : process.env.API_KEY;
+
+    if (!effectiveKey) {
+        throw new Error("API Key is missing. Please add it in Settings or configure the environment.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey: effectiveKey });
     
     // 1. Image/PDF Processing
     const parts = await Promise.all(

@@ -1,8 +1,9 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 
 interface TabBarProps {
   tabs: { id: string; title: string }[];
-  activeTabId: string | 'home';
+  activeTabId: string | 'home' | 'settings';
   onTabClick: (id: string | 'home') => void;
   onTabClose: (id: string, e: React.MouseEvent) => void;
   onNewTab: () => void;
@@ -32,7 +33,7 @@ export const TabBar: React.FC<TabBarProps> = ({
   }, [editingTabId]);
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
-    if (editingTabId) return; // Prevent dragging while editing
+    if (editingTabId || id === 'settings') return; // Prevent dragging settings or while editing
     setDraggedTabId(id);
     e.dataTransfer.effectAllowed = 'move';
   };
@@ -44,9 +45,9 @@ export const TabBar: React.FC<TabBarProps> = ({
 
   const handleDrop = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
-    if (!draggedTabId || draggedTabId === targetId) return;
+    if (!draggedTabId || draggedTabId === targetId || targetId === 'settings') return;
 
-    const currentOrder = tabs.map(t => t.id);
+    const currentOrder = tabs.filter(t => t.id !== 'settings').map(t => t.id);
     const oldIndex = currentOrder.indexOf(draggedTabId);
     const newIndex = currentOrder.indexOf(targetId);
 
@@ -65,6 +66,7 @@ export const TabBar: React.FC<TabBarProps> = ({
   };
 
   const startEditing = (id: string, currentTitle: string) => {
+    if (id === 'settings') return; // Cannot rename settings
     setEditingTabId(id);
     setEditValue(currentTitle);
   };
@@ -119,7 +121,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         {tabs.map((tab) => (
           <div
             key={tab.id}
-            draggable={!editingTabId}
+            draggable={!editingTabId && tab.id !== 'settings'}
             onDragStart={(e) => handleDragStart(e, tab.id)}
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, tab.id)}
@@ -146,9 +148,14 @@ export const TabBar: React.FC<TabBarProps> = ({
                 className="flex-1 min-w-0 bg-transparent border-none outline-none text-[12px] font-medium text-white p-0 m-0"
               />
             ) : (
-              <span className="text-[12px] truncate flex-1 mr-2 font-medium select-none" title="Double click to rename">
-                {tab.title || "Untitled Project"}
-              </span>
+              <>
+                {tab.id === 'settings' ? (
+                   <span className="material-symbols-rounded text-[16px] mr-2 text-md-sys-secondary">settings</span>
+                ) : null}
+                <span className="text-[12px] truncate flex-1 mr-2 font-medium select-none" title={tab.id === 'settings' ? 'Settings' : 'Double click to rename'}>
+                  {tab.title || "Untitled Project"}
+                </span>
+              </>
             )}
             
             <button

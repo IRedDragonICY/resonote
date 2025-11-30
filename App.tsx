@@ -9,33 +9,46 @@ import { FeedbackModal } from './components/modals/FeedbackModal';
 import { TermsModal } from './components/modals/TermsModal';
 import { ChangelogModal } from './components/modals/ChangelogModal';
 import { ConfirmationModal } from './components/modals/ConfirmationModal';
+import { SettingsView } from './components/SettingsView';
 import { convertImageToABC } from './services/geminiService';
-import { Session, GenerationState, LogEntry } from './types';
+import { Session, GenerationState, LogEntry, UserSettings } from './types';
 import { DEFAULT_ABC } from './constants/defaults';
-import { DEFAULT_MODEL_ID } from './constants/models';
+import { DEFAULT_MODEL_ID, AVAILABLE_MODELS } from './constants/models';
 import { validateABC } from './utils/abcValidator';
 import { MusicDisplayHandle } from './components/MusicDisplay';
 import { transposeABC } from './utils/abcTransposer';
 
 // Bumped version to v2 to force load new DEFAULT_ABC with multi-tracks
 const STORAGE_KEY = 'resonote_sessions_v2';
+const SETTINGS_KEY = 'resonote_user_settings_v1';
 
 export interface ViewSettings {
   showSidebar: boolean;
   zoomLevel: number;
 }
 
+const DEFAULT_USER_SETTINGS: UserSettings = {
+  apiKey: '',
+  enabledModels: AVAILABLE_MODELS.map(m => m.id)
+};
+
 export default function App() {
   // --- State Management ---
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [activeTabId, setActiveTabId] = useState<string | 'home'>('home');
+  const [activeTabId, setActiveTabId] = useState<string | 'home' | 'settings'>('home');
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   
+  // User Preferences (Persisted)
+  const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
+
   // View Settings (Global for simplicity, keeps UI consistent across tabs)
   const [viewSettings, setViewSettings] = useState<ViewSettings>({
     showSidebar: true,
     zoomLevel: 1.0
   });
+
+  // Special Tabs State
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   // Modals
   const [showAbout, setShowAbout] = useState(false);
@@ -52,13 +65,14 @@ export default function App() {
   
   // --- Persistence Logic ---
   
-  // Load sessions on mount
+  // Load sessions and settings on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed: Session[] = JSON.parse(saved);
-        // Hydrate: Ensure files array is empty (can't restore Files) but logs/abc are kept
+      // Load Sessions
+      const savedSessions = localStorage.getItem(STORAGE_KEY);
+      if (savedSessions) {
+        const parsed: Session[] = JSON.parse(savedSessions);
+        // Hydrate
         const hydrated = parsed.map(s => ({
             ...s,
             isOpen: s.isOpen ?? false, 
@@ -71,8 +85,14 @@ export default function App() {
         }));
         setSessions(hydrated);
       }
+
+      // Load Settings
+      const savedSettings = localStorage.getItem(SETTINGS_KEY);
+      if (savedSettings) {
+        setUserSettings(JSON.parse(savedSettings));
+      }
     } catch (e) {
-      console.error("Failed to load sessions", e);
+      console.error("Failed to load local storage data", e);
     }
   }, []);
 
@@ -91,6 +111,11 @@ export default function App() {
         localStorage.removeItem(STORAGE_KEY);
     }
   }, [sessions]);
+
+  // Save Settings on change
+  useEffect(() => {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(userSettings));
+  }, [userSettings]);
 
   useEffect(() => {
     window.dispatchEvent(new Event('resize'));
@@ -123,6 +148,15 @@ export default function App() {
 
   const closeSessionTab = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+
+    // Handle special tabs
+    if (id === 'settings') {
+      setIsSettingsOpen(false);
+      if (activeTabId === 'settings') setActiveTabId('home');
+      return;
+    }
+
+    // Handle normal sessions
     setSessions(prev => prev.map(s => s.id === id ? { ...s, isOpen: false } : s));
     sessionRefs.current.delete(id);
 
@@ -134,6 +168,11 @@ export default function App() {
   const handleOpenSession = (id: string) => {
     setSessions(prev => prev.map(s => s.id === id ? { ...s, isOpen: true } : s));
     setActiveTabId(id);
+  };
+
+  const handleOpenSettings = () => {
+    setIsSettingsOpen(true);
+    setActiveTabId('settings');
   };
 
   const requestDeleteSession = useCallback((id: string) => {
@@ -185,7 +224,7 @@ export default function App() {
   const handleTabsReorder = (newOrderIds: string[]) => {
     setSessions(prev => {
         const sessionMap = new Map(prev.map(s => [s.id, s]));
-        const reorderedOpen = newOrderIds.map(id => sessionMap.get(id)).filter(Boolean) as Session[];
+        const reorderedOpen = newOrderIds.filter(id => id !== 'settings').map(id => sessionMap.get(id)).filter(Boolean) as Session[];
         const closed = prev.filter(s => !s.isOpen);
         return [...reorderedOpen, ...closed];
     });
@@ -267,7 +306,8 @@ export default function App() {
         data.model,
         (msg, type) => addLogToSession(sessionId, msg, type),
         (streamedText) => updateSession(sessionId, { abc: streamedText }),
-        validateABC
+        validateABC,
+        userSettings.apiKey // Pass Custom API Key
       );
 
       setSessions(prev => prev.map(s => {
@@ -335,7 +375,7 @@ export default function App() {
   };
 
   const handleExport = (type: 'png' | 'jpg' | 'webp' | 'svg' | 'pdf' | 'doc' | 'midi' | 'wav' | 'mp3' | 'abc' | 'txt') => {
-    if (activeTabId === 'home') return;
+    if (activeTabId === 'home' || activeTabId === 'settings') return;
 
     if (type === 'abc' || type === 'txt') {
         const session = sessions.find(s => s.id === activeTabId);
@@ -387,6 +427,12 @@ export default function App() {
   // --- Rendering ---
   
   const openSessions = sessions.filter(s => s.isOpen);
+  
+  // Combine sessions with special tabs
+  const visibleTabs = [
+    ...openSessions.map(s => ({ id: s.id, title: s.title })),
+    ...(isSettingsOpen ? [{ id: 'settings', title: 'Settings' }] : [])
+  ];
 
   return (
     <div className="min-h-screen bg-md-sys-background text-md-sys-secondary selection:bg-md-sys-primary selection:text-md-sys-onPrimary font-sans flex flex-col overflow-hidden">
@@ -406,6 +452,7 @@ export default function App() {
         onOpenFeedback={() => setShowFeedback(true)}
         onOpenTerms={() => setShowTerms(true)}
         onOpenChangelog={() => setShowChangelog(true)}
+        onOpenSettings={handleOpenSettings}
         onImport={handleImportClick}
         onExport={handleExport}
         viewSettings={viewSettings}
@@ -415,7 +462,7 @@ export default function App() {
       />
 
       <TabBar 
-        tabs={openSessions.map(s => ({ id: s.id, title: s.title }))} 
+        tabs={visibleTabs} 
         activeTabId={activeTabId}
         onTabClick={setActiveTabId}
         onTabClose={closeSessionTab}
@@ -426,6 +473,7 @@ export default function App() {
 
       <main className="flex-1 overflow-hidden relative pt-20">
         
+        {/* Home View */}
         <div className={`absolute inset-0 top-20 z-10 bg-md-sys-background transition-opacity duration-200 ${activeTabId === 'home' ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
              <HomeView 
                 sessions={sessions} 
@@ -436,6 +484,17 @@ export default function App() {
              />
         </div>
 
+        {/* Settings View */}
+        {activeTabId === 'settings' && isSettingsOpen && (
+             <div className="absolute inset-0 top-20 z-20 bg-md-sys-background">
+                <SettingsView 
+                    settings={userSettings}
+                    onSaveSettings={setUserSettings}
+                />
+             </div>
+        )}
+
+        {/* Workspaces */}
         {openSessions.map(session => (
             <div 
                 key={session.id} 
@@ -453,15 +512,10 @@ export default function App() {
                     onExport={() => handleExport('abc')}
                     onTranspose={(st) => handleTranspose(session.id, st)}
                     viewSettings={viewSettings}
+                    userSettings={userSettings}
                 />
             </div>
         ))}
-
-        {sessions.length === 0 && activeTabId !== 'home' && (
-             <div className="flex items-center justify-center h-full text-gray-500">
-                 Session not found.
-             </div>
-        )}
 
       </main>
 

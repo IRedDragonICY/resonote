@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { MusicDisplay, MusicDisplayHandle } from './MusicDisplay';
 import { Editor } from './Editor';
 import { InputPanel } from './InputPanel';
-import { Session, UploadFileState } from '../types';
+import { Session, UploadFileState, UserSettings } from '../types';
 import { ViewSettings } from '../App';
 
 interface WorkspaceProps {
@@ -15,6 +14,7 @@ interface WorkspaceProps {
   onExport: () => void;
   onTranspose: (semitones: number) => void;
   viewSettings: ViewSettings;
+  userSettings?: UserSettings;
 }
 
 export const Workspace: React.FC<WorkspaceProps> = ({ 
@@ -25,7 +25,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   onImport,
   onExport,
   onTranspose,
-  viewSettings
+  viewSettings,
+  userSettings
 }) => {
   const { data } = session;
   const EDITOR_TEXTAREA_ID = `abc-source-textarea-${session.id}`;
@@ -81,6 +82,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           onModelSelect={(model) => onUpdateSession(session.id, { model })}
           onGenerate={() => onGenerate(session.id)}
           generation={data.generation}
+          userSettings={userSettings}
         />
 
         {/* Code Editor */}

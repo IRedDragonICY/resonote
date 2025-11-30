@@ -29,6 +29,11 @@ export interface ValidationResult {
   errors: string[];
 }
 
+export interface UserSettings {
+  apiKey: string;
+  enabledModels: string[]; // List of model IDs that are visible
+}
+
 export interface Session {
   id: string;
   title: string;

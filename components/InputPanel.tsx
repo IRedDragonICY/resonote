@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { UploadFileState, LogEntry, GenerationState } from '../types';
+import { UploadFileState, LogEntry, GenerationState, UserSettings } from '../types';
 import { AVAILABLE_MODELS } from '../constants/models';
 import { AILogger } from './AILogger';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -27,6 +27,7 @@ interface InputPanelProps {
   onModelSelect: (model: string) => void;
   onGenerate: () => void;
   generation: GenerationState;
+  userSettings?: UserSettings; // Pass settings to filter models
 }
 
 // --- Internal PDF Viewer Component ---
@@ -213,7 +214,8 @@ export const InputPanel: React.FC<InputPanelProps> = ({
   selectedModel,
   onModelSelect,
   onGenerate,
-  generation
+  generation,
+  userSettings
 }) => {
   // State for container drop zone (new files)
   const [isDraggingContainer, setIsDraggingContainer] = useState(false);
@@ -325,7 +327,20 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     }
   };
 
-  const currentModelName = AVAILABLE_MODELS.find(m => m.id === selectedModel)?.name || selectedModel;
+  // Filter visible models based on settings
+  const visibleModels = AVAILABLE_MODELS.filter(m => 
+    userSettings ? userSettings.enabledModels.includes(m.id) : true
+  );
+
+  // If currently selected model is hidden, fallback to first available
+  useEffect(() => {
+    if (visibleModels.length > 0 && !visibleModels.find(m => m.id === selectedModel)) {
+        onModelSelect(visibleModels[0].id);
+    }
+  }, [visibleModels, selectedModel, onModelSelect]);
+
+
+  const currentModelName = visibleModels.find(m => m.id === selectedModel)?.name || selectedModel;
 
   const isPdf = (file: File) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 
@@ -427,7 +442,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                             onChange={(e) => onModelSelect(e.target.value)}
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         >
-                            {AVAILABLE_MODELS.map(m => (
+                            {visibleModels.map(m => (
                                 <option key={m.id} value={m.id}>{m.name}</option>
                             ))}
                         </select>
