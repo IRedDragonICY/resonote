@@ -28,12 +28,10 @@ export default function App() {
   const [showTerms, setShowTerms] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
 
-  // Ref for Export (Map to hold refs for all active sessions)
+  // Refs
   const sessionRefs = useRef<Map<string, MusicDisplayHandle>>(new Map());
-  
-  // Ref for Import
   const importInputRef = useRef<HTMLInputElement>(null);
-
+  
   // --- Persistence Logic ---
   
   // Load sessions on mount
@@ -115,11 +113,6 @@ export default function App() {
   const updateSession = useCallback((id: string, updates: Partial<Session['data']>) => {
     setSessions(prev => prev.map(s => {
         if (s.id !== id) return s;
-        
-        // Auto-update title if ABC changes to include a Title field, BUT only if user hasn't manually renamed it recently (optional complexity, skipping for now)
-        // Simple approach: If ABC changes, check for Title tag and update.
-        // However, if user just renamed the tab, we might not want to overwrite it immediately if they edit code. 
-        // For now, let's stick to the existing logic: Code T: updates title.
         
         let newTitle = s.title;
         if (updates.abc) {
@@ -240,60 +233,42 @@ export default function App() {
   // --- Import / Export Logic ---
 
   const handleImportClick = () => {
+    // FIX: Directly trigger file input without intermediate confirmation dialogs.
+    // This prevents "User cancelled" errors caused by browser security blocking event loops.
+    // The "Import" action implies intent to replace content.
     if (importInputRef.current) {
-        // Reset value before clicking to ensure onChange always fires
-        importInputRef.current.value = '';
+        importInputRef.current.value = ''; // Reset to allow re-selecting same file
         importInputRef.current.click();
     }
   };
 
-  const handleFileImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    
-    // Reset input value immediately to allow re-selection of the same file
-    if (e.target) {
-        e.target.value = '';
-    }
-
     if (!file) return;
 
-    // Use FileReader for better compatibility and control
-    const readFile = (f: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string || "");
-            reader.onerror = (e) => reject(new Error("File read error"));
-            reader.readAsText(f);
-        });
-    };
-
     try {
-        const text = await readFile(file);
+        const text = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (evt) => resolve(evt.target?.result as string || "");
+            reader.onerror = () => reject(new Error("Failed to read file"));
+            reader.readAsText(file);
+        });
         
-        if (!text || text.trim().length === 0) {
+        if (!text.trim()) {
             alert("The selected file is empty.");
             return;
         }
 
-        const title = file.name.replace(/\.(abc|txt)$/i, '');
-
         if (activeTabId === 'home') {
-            createNewSession(text, title);
+            createNewSession(text, file.name.replace(/\.(abc|txt)$/i, ''));
         } else {
-            // Check if current session is effectively empty or default to skip confirm
-            const currentSession = sessions.find(s => s.id === activeTabId);
-            const isDefault = currentSession?.data.abc === DEFAULT_ABC || !currentSession?.data.abc;
-            
-            // Confirm overwrite if content exists
-            if (isDefault || window.confirm("Importing will replace the current ABC source. Continue?")) {
-                 updateSession(activeTabId, { abc: text });
-            }
+             updateSession(activeTabId, { abc: text });
         }
     } catch (error) {
-        console.error("Import failed:", error);
+        console.error(error);
         alert("Failed to read file.");
     }
-  }, [activeTabId, createNewSession, updateSession, sessions]);
+  };
 
   const handleExport = (type: 'png' | 'pdf' | 'midi' | 'wav' | 'mp3' | 'abc' | 'txt') => {
     if (activeTabId === 'home') return;
