@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { MusicDisplay } from './components/MusicDisplay';
+import React, { useState, useRef } from 'react';
+import { MusicDisplay, MusicDisplayHandle } from './components/MusicDisplay';
 import { Editor } from './components/Editor';
 import { Header } from './components/Header';
 import { InputPanel } from './components/InputPanel';
@@ -43,6 +43,9 @@ export default function App() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
+
+  // Ref for accessing MusicDisplay methods (Export)
+  const musicDisplayRef = useRef<MusicDisplayHandle>(null);
 
   const addLog = (message: string, type: 'info' | 'success' | 'warning' | 'thinking' = 'info') => {
     const now = new Date();
@@ -117,6 +120,12 @@ export default function App() {
     setManualAbc(DEFAULT_ABC);
   };
 
+  const handleExport = (type: 'png' | 'pdf' | 'midi') => {
+    if (musicDisplayRef.current) {
+      musicDisplayRef.current.exportFile(type);
+    }
+  };
+
   // Shared ID for the editor textarea so MusicDisplay can bind to it
   const EDITOR_TEXTAREA_ID = "abc-source-textarea";
 
@@ -130,6 +139,7 @@ export default function App() {
         onOpenFeedback={() => setShowFeedback(true)}
         onOpenTerms={() => setShowTerms(true)}
         onOpenChangelog={() => setShowChangelog(true)}
+        onExport={handleExport}
       />
 
       <main className="flex-1 pt-14 pb-6 px-4 lg:px-6 max-w-[1920px] mx-auto w-full">
@@ -171,6 +181,7 @@ export default function App() {
           <div className="lg:col-span-7 h-full flex flex-col">
              <div className="flex-1 bg-md-sys-surface rounded-2xl border border-md-sys-outline/20 overflow-hidden relative shadow-2xl">
                  <MusicDisplay 
+                   ref={musicDisplayRef}
                    abcNotation={manualAbc} 
                    warningId="abc-parse-warnings" 
                    textareaId={EDITOR_TEXTAREA_ID}

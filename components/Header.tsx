@@ -7,6 +7,7 @@ interface HeaderProps {
   onOpenFeedback: () => void;
   onOpenTerms: () => void;
   onOpenChangelog: () => void;
+  onExport: (type: 'png' | 'pdf' | 'midi') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -15,9 +16,11 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAbout, 
   onOpenFeedback,
   onOpenTerms,
-  onOpenChangelog
+  onOpenChangelog,
+  onExport
 }) => {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [showExportSubmenu, setShowExportSubmenu] = useState(false);
 
   const handleCheckForUpdates = async () => {
       setCheckingUpdate(true);
@@ -57,11 +60,89 @@ export const Header: React.FC<HeaderProps> = ({
           
           {/* Desktop Menu Items */}
           <div className="hidden md:flex items-center gap-1">
-               {['File', 'View'].map(item => (
-                   <button key={item} className="px-3 py-1 rounded hover:bg-white/10 text-[12px] text-md-sys-secondary hover:text-white transition-colors cursor-default">
-                      {item}
-                   </button>
-               ))}
+               
+               {/* File Menu */}
+               <div className="relative">
+                  <button 
+                      onClick={() => {
+                          if (activeMenu === 'File') {
+                              setActiveMenu(null);
+                          } else {
+                              setActiveMenu('File');
+                              setShowExportSubmenu(false);
+                          }
+                      }}
+                      className={`px-3 py-1 rounded transition-colors cursor-default text-[12px] ${
+                          activeMenu === 'File' 
+                          ? 'bg-white/10 text-white' 
+                          : 'text-md-sys-secondary hover:bg-white/10 hover:text-white'
+                      }`}
+                  >
+                      File
+                  </button>
+
+                  {activeMenu === 'File' && (
+                      <>
+                          <div className="fixed inset-0 z-40" onClick={() => setActiveMenu(null)} />
+                          {/* Note: overflow-visible needed for submenu to show outside */}
+                          <div className="absolute top-full left-0 mt-2 w-56 bg-[#2B2B2B] rounded-lg shadow-2xl z-50 overflow-visible flex flex-col py-2 animate-in fade-in zoom-in-95 duration-100 ring-1 ring-white/5">
+                              
+                              {/* Export As Group */}
+                              <div 
+                                className="relative group"
+                                onMouseEnter={() => setShowExportSubmenu(true)}
+                                onMouseLeave={() => setShowExportSubmenu(false)}
+                              >
+                                  <button 
+                                      className="w-full text-left px-4 py-2.5 text-[13px] text-[#E3E3E3] hover:bg-[#3d3d3d] transition-colors flex items-center justify-between"
+                                      onClick={(e) => {
+                                          e.stopPropagation();
+                                          setShowExportSubmenu(!showExportSubmenu);
+                                      }}
+                                  >
+                                      <div className="flex items-center gap-3">
+                                          <span className="material-symbols-rounded text-[18px] text-md-sys-primary">ios_share</span>
+                                          Export As
+                                      </div>
+                                      <span className="material-symbols-rounded text-[18px] text-gray-500 group-hover:text-white">chevron_right</span>
+                                  </button>
+
+                                  {/* Submenu */}
+                                  {showExportSubmenu && (
+                                      <div className="absolute left-full top-0 -ml-1 w-52 bg-[#2B2B2B] rounded-lg shadow-2xl z-50 overflow-hidden flex flex-col py-2 ring-1 ring-white/5 animate-in fade-in zoom-in-95 duration-100">
+                                          <button 
+                                              onClick={() => { onExport('pdf'); setActiveMenu(null); }}
+                                              className="text-left px-4 py-2.5 text-[13px] text-[#E3E3E3] hover:bg-[#3d3d3d] transition-colors flex items-center gap-3"
+                                          >
+                                              <span className="material-symbols-rounded text-[18px] text-red-400">picture_as_pdf</span>
+                                              PDF Document
+                                          </button>
+                                          <button 
+                                              onClick={() => { onExport('png'); setActiveMenu(null); }}
+                                              className="text-left px-4 py-2.5 text-[13px] text-[#E3E3E3] hover:bg-[#3d3d3d] transition-colors flex items-center gap-3"
+                                          >
+                                              <span className="material-symbols-rounded text-[18px] text-emerald-400">image</span>
+                                              Image (.png)
+                                          </button>
+                                          <button 
+                                              onClick={() => { onExport('midi'); setActiveMenu(null); }}
+                                              className="text-left px-4 py-2.5 text-[13px] text-[#E3E3E3] hover:bg-[#3d3d3d] transition-colors flex items-center gap-3"
+                                          >
+                                              <span className="material-symbols-rounded text-[18px] text-amber-400">piano</span>
+                                              MIDI Audio
+                                          </button>
+                                      </div>
+                                  )}
+                              </div>
+                          </div>
+                      </>
+                  )}
+               </div>
+
+               {/* Placeholder View Menu */}
+               <button className="px-3 py-1 rounded hover:bg-white/10 text-[12px] text-md-sys-secondary hover:text-white transition-colors cursor-default">
+                  View
+               </button>
                
                {/* Help Menu Dropdown */}
                <div className="relative">

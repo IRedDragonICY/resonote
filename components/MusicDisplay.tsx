@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useImperativeHandle } from 'react';
 import abcjs from 'abcjs';
 import { jsPDF } from 'jspdf';
 
@@ -8,7 +8,11 @@ interface MusicDisplayProps {
   textareaId: string;
 }
 
-export const MusicDisplay: React.FC<MusicDisplayProps> = ({ abcNotation, warningId, textareaId }) => {
+export interface MusicDisplayHandle {
+  exportFile: (type: 'png' | 'pdf' | 'midi') => void;
+}
+
+export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayProps>(({ abcNotation, warningId, textareaId }, ref) => {
   // Use stable IDs for the DOM elements
   const uniqueId = useRef(Math.random().toString(36).substr(2, 9)).current;
   const paperId = `abc-paper-${uniqueId}`;
@@ -228,6 +232,11 @@ export const MusicDisplay: React.FC<MusicDisplayProps> = ({ abcNotation, warning
       }
   };
 
+  // Expose the export function to parent components
+  useImperativeHandle(ref, () => ({
+    exportFile: handleExport
+  }));
+
   return (
     <div className="w-full h-full flex flex-col bg-white text-black">
         {/* Toolbar */}
@@ -262,4 +271,6 @@ export const MusicDisplay: React.FC<MusicDisplayProps> = ({ abcNotation, warning
         </div>
     </div>
   );
-};
+});
+
+MusicDisplay.displayName = 'MusicDisplay';
