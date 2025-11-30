@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 interface TabBarProps {
   tabs: { id: string; title: string }[];
@@ -7,6 +7,7 @@ interface TabBarProps {
   onTabClose: (id: string, e: React.MouseEvent) => void;
   onNewTab: () => void;
   onTabsReorder: (newOrder: string[]) => void;
+  onTabRename: (id: string, newTitle: string) => void;
 }
 
 export const TabBar: React.FC<TabBarProps> = ({ 
@@ -15,15 +16,25 @@ export const TabBar: React.FC<TabBarProps> = ({
   onTabClick, 
   onTabClose,
   onNewTab,
-  onTabsReorder
+  onTabsReorder,
+  onTabRename
 }) => {
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
+  const [editingTabId, setEditingTabId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingTabId && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingTabId]);
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
+    if (editingTabId) return; // Prevent dragging while editing
     setDraggedTabId(id);
     e.dataTransfer.effectAllowed = 'move';
-    // Optional: Make the drag image transparent or custom if needed
-    // e.dataTransfer.setDragImage(e.currentTarget, 0, 0);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -51,6 +62,31 @@ export const TabBar: React.FC<TabBarProps> = ({
 
   const handleDragEnd = () => {
     setDraggedTabId(null);
+  };
+
+  const startEditing = (id: string, currentTitle: string) => {
+    setEditingTabId(id);
+    setEditValue(currentTitle);
+  };
+
+  const saveEdit = () => {
+    if (editingTabId && editValue.trim()) {
+      onTabRename(editingTabId, editValue.trim());
+    }
+    setEditingTabId(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingTabId(null);
+    setEditValue("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveEdit();
+    } else if (e.key === 'Escape') {
+      cancelEdit();
+    }
   };
 
   return (
@@ -83,12 +119,13 @@ export const TabBar: React.FC<TabBarProps> = ({
         {tabs.map((tab) => (
           <div
             key={tab.id}
-            draggable
+            draggable={!editingTabId}
             onDragStart={(e) => handleDragStart(e, tab.id)}
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, tab.id)}
             onDragEnd={handleDragEnd}
-            onClick={() => onTabClick(tab.id)}
+            onClick={() => !editingTabId && onTabClick(tab.id)}
+            onDoubleClick={() => startEditing(tab.id, tab.title)}
             className={`
               group relative flex items-center min-w-[120px] max-w-[200px] h-[34px] px-3 mr-1 rounded-t-lg cursor-pointer border-t border-x border-transparent transition-all
               ${activeTabId === tab.id 
@@ -98,9 +135,21 @@ export const TabBar: React.FC<TabBarProps> = ({
               ${draggedTabId === tab.id ? 'opacity-50' : 'opacity-100'}
             `}
           >
-            <span className="text-[12px] truncate flex-1 mr-2 font-medium">
-              {tab.title || "Untitled Project"}
-            </span>
+            {editingTabId === tab.id ? (
+              <input
+                ref={inputRef}
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={saveEdit}
+                onKeyDown={handleKeyDown}
+                className="flex-1 min-w-0 bg-transparent border-none outline-none text-[12px] font-medium text-white p-0 m-0"
+              />
+            ) : (
+              <span className="text-[12px] truncate flex-1 mr-2 font-medium select-none" title="Double click to rename">
+                {tab.title || "Untitled Project"}
+              </span>
+            )}
             
             <button
               onClick={(e) => onTabClose(tab.id, e)}

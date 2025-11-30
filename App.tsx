@@ -116,7 +116,11 @@ export default function App() {
     setSessions(prev => prev.map(s => {
         if (s.id !== id) return s;
         
-        // Auto-update title if ABC changes to include a Title field
+        // Auto-update title if ABC changes to include a Title field, BUT only if user hasn't manually renamed it recently (optional complexity, skipping for now)
+        // Simple approach: If ABC changes, check for Title tag and update.
+        // However, if user just renamed the tab, we might not want to overwrite it immediately if they edit code. 
+        // For now, let's stick to the existing logic: Code T: updates title.
+        
         let newTitle = s.title;
         if (updates.abc) {
             const match = updates.abc.match(/T:(.*)/);
@@ -133,6 +137,12 @@ export default function App() {
         };
     }));
   }, []);
+
+  const handleTabRename = (id: string, newTitle: string) => {
+    setSessions(prev => prev.map(s => 
+        s.id === id ? { ...s, title: newTitle, lastModified: Date.now() } : s
+    ));
+  };
 
   const handleTabsReorder = (newOrderIds: string[]) => {
     setSessions(prev => {
@@ -345,6 +355,7 @@ export default function App() {
         onTabClose={closeSession}
         onNewTab={() => createNewSession()}
         onTabsReorder={handleTabsReorder}
+        onTabRename={handleTabRename}
       />
 
       {/* Main Content - Added padding top to account for fixed Header + TabBar (40px + 40px = 80px -> pt-20) */}
