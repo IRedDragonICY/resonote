@@ -20,7 +20,7 @@ import { transposeABC } from './utils/abcTransposer';
 
 // Bumped version to v2 to force load new DEFAULT_ABC with multi-tracks
 const STORAGE_KEY = 'resonote_sessions_v2';
-const SETTINGS_KEY = 'resonote_user_settings_v1';
+const SETTINGS_KEY = 'resonote_user_settings_v2'; // Bumped for theme support
 
 export interface ViewSettings {
   showSidebar: boolean;
@@ -29,7 +29,8 @@ export interface ViewSettings {
 
 const DEFAULT_USER_SETTINGS: UserSettings = {
   apiKey: '',
-  enabledModels: AVAILABLE_MODELS.map(m => m.id)
+  enabledModels: AVAILABLE_MODELS.map(m => m.id),
+  theme: 'dark'
 };
 
 export default function App() {
@@ -89,7 +90,9 @@ export default function App() {
       // Load Settings
       const savedSettings = localStorage.getItem(SETTINGS_KEY);
       if (savedSettings) {
-        setUserSettings(JSON.parse(savedSettings));
+        const parsedSettings = JSON.parse(savedSettings);
+        // Merge with default to ensure new keys (like theme) exist if loading old settings
+        setUserSettings({ ...DEFAULT_USER_SETTINGS, ...parsedSettings });
       }
     } catch (e) {
       console.error("Failed to load local storage data", e);
@@ -116,6 +119,19 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(userSettings));
   }, [userSettings]);
+
+  // Theme Effect
+  useEffect(() => {
+    const root = document.documentElement;
+    if (userSettings.theme === 'dark') {
+      root.classList.add('dark');
+      // Also set meta theme color
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#0F0F0F');
+    } else {
+      root.classList.remove('dark');
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#FFFFFF');
+    }
+  }, [userSettings.theme]);
 
   useEffect(() => {
     window.dispatchEvent(new Event('resize'));
@@ -252,6 +268,13 @@ export default function App() {
 
   const handleResetZoom = () => {
     setViewSettings(prev => ({ ...prev, zoomLevel: 1.0 }));
+  };
+
+  const handleToggleTheme = () => {
+    setUserSettings(prev => ({
+      ...prev,
+      theme: prev.theme === 'dark' ? 'light' : 'dark'
+    }));
   };
 
   // --- Generation Logic ---
@@ -459,6 +482,8 @@ export default function App() {
         onToggleSidebar={handleToggleSidebar}
         onZoom={handleZoom}
         onResetZoom={handleResetZoom}
+        theme={userSettings.theme}
+        onToggleTheme={handleToggleTheme}
       />
 
       <TabBar 

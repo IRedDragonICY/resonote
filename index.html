@@ -49,15 +49,16 @@
             colors: {
               md: {
                 sys: {
-                  background: '#0F0F0F',
-                  surface: '#1E1E1E',
-                  surfaceVariant: '#2D2D2D',
-                  outline: '#444746',
-                  primary: '#A8C7FA',
-                  onPrimary: '#062E6F',
-                  secondary: '#C4C7C5',
-                  tertiary: '#E0E2E0',
-                  error: '#FFB4AB'
+                  background: 'rgb(var(--md-sys-background) / <alpha-value>)',
+                  surface: 'rgb(var(--md-sys-surface) / <alpha-value>)',
+                  surfaceVariant: 'rgb(var(--md-sys-surface-variant) / <alpha-value>)',
+                  outline: 'rgb(var(--md-sys-outline) / <alpha-value>)',
+                  primary: 'rgb(var(--md-sys-primary) / <alpha-value>)',
+                  onPrimary: 'rgb(var(--md-sys-on-primary) / <alpha-value>)',
+                  secondary: 'rgb(var(--md-sys-secondary) / <alpha-value>)',
+                  tertiary: 'rgb(var(--md-sys-tertiary) / <alpha-value>)',
+                  error: 'rgb(var(--md-sys-error) / <alpha-value>)',
+                  onSurface: 'rgb(var(--md-sys-on-surface) / <alpha-value>)',
                 }
               }
             }
@@ -70,9 +71,48 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
 
     <style>
+      :root {
+        /* Light Theme Tokens (RGB for Tailwind Opacity) */
+        --md-sys-background: 249 249 249;
+        --md-sys-surface: 255 255 255;
+        --md-sys-surface-variant: 240 240 240;
+        --md-sys-outline: 116 119 117;
+        --md-sys-primary: 11 87 208;
+        --md-sys-on-primary: 255 255 255;
+        --md-sys-secondary: 68 71 70;
+        --md-sys-tertiary: 30 30 30;
+        --md-sys-error: 186 26 26;
+        --md-sys-on-surface: 30 30 30;
+        
+        --sheet-music-bg: #FFFFFF;
+        --sheet-music-ink: #000000;
+        --scrollbar-track: #F0F0F0;
+        --scrollbar-thumb: #C4C7C5;
+      }
+
+      .dark {
+        /* Dark Theme Tokens (RGB) */
+        --md-sys-background: 15 15 15;
+        --md-sys-surface: 30 30 30;
+        --md-sys-surface-variant: 45 45 45;
+        --md-sys-outline: 68 71 70;
+        --md-sys-primary: 168 199 250;
+        --md-sys-on-primary: 6 46 111;
+        --md-sys-secondary: 196 199 197;
+        --md-sys-tertiary: 224 226 224;
+        --md-sys-error: 255 180 171;
+        --md-sys-on-surface: 227 227 227;
+
+        --sheet-music-bg: #FFFFFF; 
+        --sheet-music-ink: #000000;
+        --scrollbar-track: #1E1E1E;
+        --scrollbar-thumb: #444;
+      }
+
       body {
-        background-color: #0F0F0F;
-        color: #E3E3E3;
+        background-color: rgb(var(--md-sys-background));
+        color: rgb(var(--md-sys-on-surface));
+        transition: background-color 0.3s ease, color 0.3s ease;
       }
       .material-symbols-rounded {
         font-variation-settings: 'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 24;
@@ -83,35 +123,34 @@
         height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #1E1E1E; 
+        background: var(--scrollbar-track); 
       }
       ::-webkit-scrollbar-thumb {
-        background: #444; 
+        background: var(--scrollbar-thumb); 
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #555; 
+        background: rgb(var(--md-sys-outline)); 
       }
       
       /* ABCJS Custom Styling */
-      /* Force pure black on all elements to fix "gray" issue */
+      /* Use variables for flexibility, defaulting to black on white for readability usually */
       #paper {
-        color: #000000;
+        color: var(--sheet-music-ink);
       }
       #paper svg text, #paper svg tspan, #paper svg path {
-        fill: #000000 !important;
+        fill: var(--sheet-music-ink) !important;
       }
       #paper svg path[stroke], #paper svg line, #paper svg .abcjs-staff, #paper svg .abcjs-staff-extra, #paper svg .abcjs-beam, #paper svg .abcjs-bar {
-        stroke: #000000 !important;
+        stroke: var(--sheet-music-ink) !important;
         fill: none !important;
       }
       
-      /* Explicitly handle note heads to ensure they are black */
       #paper .abcjs-note {
-        fill: #000000 !important;
+        fill: var(--sheet-music-ink) !important;
       }
 
-      /* Cursor and Highlight - Must override the black checks above */
+      /* Cursor and Highlight */
       #paper svg .abcjs-highlight {
         fill: #0a9ecc !important;
       }
@@ -122,18 +161,18 @@
         fill: none !important;
       }
 
-      /* ABCJS Audio Player CSS - Updated for larger touch targets and visibility */
+      /* ABCJS Audio Player CSS */
       .abcjs-inline-audio {
-        height: 48px; /* Increased height */
+        height: 48px; 
         padding: 0 10px;
         border-radius: 8px;
-        background-color: #2d2d2d; /* Matching surfaceVariant */
-        border: 1px solid #444746;
+        background-color: rgb(var(--md-sys-surface-variant));
+        border: 1px solid rgb(var(--md-sys-outline) / 0.2);
         display: flex;
         align-items: center;
         box-sizing: border-box;
         width: 100%;
-        color: #E3E3E3;
+        color: rgb(var(--md-sys-on-surface));
       }
 
       .abcjs-inline-audio.abcjs-disabled {
@@ -145,7 +184,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        width: 44px; /* Larger buttons */
+        width: 44px;
         height: 44px;
         margin-right: 4px;
         padding: 8px;
@@ -157,24 +196,24 @@
       }
       
       .abcjs-inline-audio .abcjs-btn:hover {
-        background-color: rgba(255, 255, 255, 0.1) !important;
+        background-color: rgba(128, 128, 128, 0.1) !important;
       }
 
       .abcjs-btn g {
-        fill: #E3E3E3;
-        stroke: #E3E3E3;
+        fill: rgb(var(--md-sys-on-surface));
+        stroke: rgb(var(--md-sys-on-surface));
       }
 
       .abcjs-inline-audio .abcjs-midi-selection.abcjs-pushed,
       .abcjs-inline-audio .abcjs-midi-loop.abcjs-pushed,
       .abcjs-inline-audio .abcjs-midi-reset.abcjs-pushed {
-        background-color: #444746 !important;
-        color: #A8C7FA;
+        background-color: rgb(var(--md-sys-outline)) !important;
+        color: rgb(var(--md-sys-primary));
       }
       
       .abcjs-inline-audio .abcjs-midi-loop.abcjs-pushed g {
-        fill: #A8C7FA;
-        stroke: #A8C7FA;
+        fill: rgb(var(--md-sys-primary));
+        stroke: rgb(var(--md-sys-primary));
       }
 
       .abcjs-inline-audio .abcjs-midi-start .abcjs-pause-svg,
@@ -190,8 +229,8 @@
 
       /* Progress Bar Container */
       .abcjs-inline-audio .abcjs-midi-progress-background {
-        background-color: #1E1E1E;
-        height: 12px; /* Thicker progress bar */
+        background-color: rgb(var(--md-sys-surface));
+        height: 12px;
         border-radius: 6px;
         margin: 0 16px;
         position: relative;
@@ -199,19 +238,19 @@
         padding: 0;
         box-sizing: border-box;
         cursor: pointer;
-        border: 1px solid #444746;
+        border: 1px solid rgb(var(--md-sys-outline) / 0.3);
       }
 
       /* Progress Indicator (The Handle) */
       .abcjs-inline-audio .abcjs-midi-progress-indicator {
-        width: 16px; /* Width of the handle */
-        height: 16px; /* Height of the handle */
-        margin-left: -8px; /* Center the handle */
-        background-color: #A8C7FA; /* Primary Color */
+        width: 16px;
+        height: 16px;
+        margin-left: -8px; 
+        background-color: rgb(var(--md-sys-primary));
         position: absolute;
         display: block;
-        border-radius: 50%; /* Circular handle */
-        top: -3px; /* Align vertically center (12px height - 16px height / 2 approx) */
+        border-radius: 50%;
+        top: -3px; 
         left: 0;
         box-sizing: border-box;
         box-shadow: 0 0 4px rgba(0,0,0,0.5);
@@ -225,14 +264,14 @@
         font-size: 14px;
         font-weight: 500;
         box-sizing: border-box;
-        color: #E3E3E3;
+        color: rgb(var(--md-sys-on-surface));
         min-width: 45px;
         text-align: center;
       }
 
       .abcjs-inline-audio .abcjs-tempo-wrapper {
         font-size: 12px;
-        color: #C4C7C5;
+        color: rgb(var(--md-sys-secondary));
         box-sizing: border-box;
         display: flex;
         align-items: center;
@@ -241,20 +280,20 @@
 
       .abcjs-inline-audio .abcjs-midi-tempo {
         border-radius: 4px;
-        border: 1px solid #444746;
+        border: 1px solid rgb(var(--md-sys-outline) / 0.3);
         margin: 0 4px;
         width: 50px;
         padding: 2px 4px;
         box-sizing: border-box;
-        background-color: #1E1E1E;
-        color: #E3E3E3;
+        background-color: rgb(var(--md-sys-surface));
+        color: rgb(var(--md-sys-on-surface));
         font-family: 'Roboto Mono', monospace;
         text-align: center;
       }
       
       .abcjs-inline-audio .abcjs-midi-tempo:focus {
-        outline: 1px solid #A8C7FA;
-        border-color: #A8C7FA;
+        outline: 1px solid rgb(var(--md-sys-primary));
+        border-color: rgb(var(--md-sys-primary));
       }
 
       .abcjs-inline-audio .abcjs-loading .abcjs-loading-svg {
@@ -267,7 +306,7 @@
       }
       
       .abcjs-inline-audio .abcjs-loading-svg circle {
-        stroke: #A8C7FA;
+        stroke: rgb(var(--md-sys-primary));
       }
 
       @keyframes abcjs-spin {

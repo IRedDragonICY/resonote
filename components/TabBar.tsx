@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 
 interface TabBarProps {
@@ -92,32 +91,32 @@ export const TabBar: React.FC<TabBarProps> = ({
   };
 
   return (
-    <div className="fixed top-10 left-0 right-0 z-40 flex items-end w-full h-10 bg-[#1e1e1e] border-b border-black select-none pt-1 shadow-sm transition-all">
+    <div className="fixed top-10 left-0 right-0 z-40 flex items-end w-full h-10 bg-md-sys-surface border-b border-md-sys-outline/30 select-none pt-1 shadow-sm transition-colors duration-200">
       {/* Home Button (Not draggable) */}
       <button
         onClick={() => onTabClick('home')}
         className={`
           relative flex items-center justify-center w-12 h-full rounded-t-md mx-1 transition-all duration-200
           ${activeTabId === 'home' 
-            ? 'bg-[#0F0F0F] text-md-sys-primary shadow-sm' 
-            : 'bg-transparent text-gray-500 hover:bg-[#2a2a2a] hover:text-gray-300'
+            ? 'bg-md-sys-background text-md-sys-primary shadow-sm border-t border-x border-md-sys-outline/20' 
+            : 'bg-transparent text-md-sys-secondary hover:bg-md-sys-surfaceVariant hover:text-md-sys-onSurface'
           }
         `}
         title="Home / Recent"
       >
         {activeTabId === 'home' && (
-             <div className="absolute top-0 left-0 right-0 h-[2px] bg-md-sys-primary rounded-t-full shadow-[0_0_8px_rgba(168,199,250,0.5)]" />
+             <div className="absolute top-[-1px] left-0 right-0 h-[3px] bg-md-sys-primary rounded-t-full shadow-[0_0_8px_rgba(var(--md-sys-primary),0.5)]" />
         )}
         <span className={`material-symbols-rounded text-[20px] ${activeTabId === 'home' ? 'font-variation-filled' : ''}`}>
           home
         </span>
         {activeTabId === 'home' && (
-             <div className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-[#0F0F0F] z-10" />
+             <div className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-md-sys-background z-10" />
         )}
       </button>
 
       {/* Separator */}
-      <div className="w-px h-4 bg-white/10 mx-1 mb-2.5"></div>
+      <div className="w-px h-4 bg-md-sys-outline/20 mx-1 mb-2.5"></div>
 
       {/* Scrollable Tab Area */}
       <div className="flex-1 flex overflow-x-auto custom-scrollbar-hide h-full items-end pr-2">
@@ -134,17 +133,17 @@ export const TabBar: React.FC<TabBarProps> = ({
               onClick={() => !editingTabId && onTabClick(tab.id)}
               onDoubleClick={() => startEditing(tab.id, tab.title)}
               className={`
-                group relative flex items-center min-w-[120px] max-w-[200px] h-[34px] px-3 mr-1 rounded-t-md cursor-pointer border-x transition-all duration-150 ease-out
+                group relative flex items-center min-w-[120px] max-w-[200px] h-[34px] px-3 mr-1 rounded-t-md cursor-pointer border-t border-x transition-all duration-150 ease-out
                 ${isActive 
-                  ? 'bg-[#0F0F0F] text-white border-black/30 z-10' 
-                  : 'bg-[#252525] text-gray-500 hover:bg-[#2d2d2d] hover:text-gray-300 border-transparent hover:border-black/10'
+                  ? 'bg-md-sys-background text-md-sys-onSurface border-md-sys-outline/20 z-10' 
+                  : 'bg-md-sys-surfaceVariant/50 text-md-sys-secondary hover:bg-md-sys-surfaceVariant hover:text-md-sys-onSurface border-transparent hover:border-md-sys-outline/10'
                 }
                 ${draggedTabId === tab.id ? 'opacity-50' : 'opacity-100'}
               `}
             >
               {/* Top Active Indicator */}
               {isActive && (
-                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-md-sys-primary rounded-t-full shadow-[0_0_6px_rgba(168,199,250,0.4)]" />
+                  <div className="absolute top-[-1px] left-0 right-0 h-[3px] bg-md-sys-primary rounded-t-full" />
               )}
 
               {editingTabId === tab.id ? (
@@ -155,14 +154,14 @@ export const TabBar: React.FC<TabBarProps> = ({
                   onChange={(e) => setEditValue(e.target.value)}
                   onBlur={saveEdit}
                   onKeyDown={handleKeyDown}
-                  className="flex-1 min-w-0 bg-transparent border-none outline-none text-[12px] font-medium text-white p-0 m-0 placeholder:text-gray-600"
+                  className="flex-1 min-w-0 bg-transparent border-none outline-none text-[12px] font-medium text-md-sys-onSurface p-0 m-0 placeholder:text-md-sys-secondary"
                 />
               ) : (
                 <>
                   {tab.id === 'settings' ? (
-                     <span className={`material-symbols-rounded text-[16px] mr-2 transition-colors ${isActive ? 'text-md-sys-primary' : 'text-gray-500'}`}>settings</span>
+                     <span className={`material-symbols-rounded text-[16px] mr-2 transition-colors ${isActive ? 'text-md-sys-primary' : 'text-md-sys-secondary'}`}>settings</span>
                   ) : (
-                     <span className={`material-symbols-rounded text-[16px] mr-2 transition-colors ${isActive ? 'text-md-sys-primary' : 'text-gray-500 group-hover:text-gray-400'}`}>music_note</span>
+                     <span className={`material-symbols-rounded text-[16px] mr-2 transition-colors ${isActive ? 'text-md-sys-primary' : 'text-md-sys-secondary group-hover:text-md-sys-onSurface'}`}>music_note</span>
                   )}
                   <span className="text-[12px] truncate flex-1 mr-2 font-medium select-none tracking-tight" title={tab.id === 'settings' ? 'Settings' : 'Double click to rename'}>
                     {tab.title || "Untitled Project"}
@@ -173,8 +172,8 @@ export const TabBar: React.FC<TabBarProps> = ({
               <button
                 onClick={(e) => onTabClose(tab.id, e)}
                 className={`
-                  p-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-all hover:bg-white/10
-                  ${isActive ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-300'}
+                  p-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-all hover:bg-md-sys-onSurface/10
+                  ${isActive ? 'text-md-sys-secondary hover:text-md-sys-error' : 'text-md-sys-secondary hover:text-md-sys-onSurface'}
                 `}
               >
                 <span className="material-symbols-rounded text-[14px] block">close</span>
@@ -182,7 +181,7 @@ export const TabBar: React.FC<TabBarProps> = ({
 
               {/* Mask bottom border to blend with content */}
                {isActive && (
-                  <div className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-[#0F0F0F] z-10" />
+                  <div className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-md-sys-background z-10" />
               )}
             </div>
           );
@@ -191,7 +190,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         {/* New Tab Button */}
         <button
           onClick={onNewTab}
-          className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-white/10 text-gray-500 hover:text-white transition-colors ml-1 mb-0.5 flex-shrink-0"
+          className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-md-sys-surfaceVariant text-md-sys-secondary hover:text-md-sys-onSurface transition-colors ml-1 mb-0.5 flex-shrink-0"
           title="New Tab"
         >
           <span className="material-symbols-rounded text-[20px]">add</span>

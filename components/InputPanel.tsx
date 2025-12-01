@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { UploadFileState, LogEntry, GenerationState, UserSettings } from '../types';
 import { AVAILABLE_MODELS } from '../constants/models';
@@ -6,12 +5,9 @@ import { AILogger } from './AILogger';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Initialize PDF.js worker
-// FIX: Handle potential default export structure from esm.sh
 const pdfjs = (pdfjsLib as any).default ?? pdfjsLib;
 
 if (pdfjs.GlobalWorkerOptions) {
-  // Use cdnjs for the worker to ensure it is loaded as a Classic Script (not Module),
-  // which prevents "Failed to execute 'importScripts'" and "WorkerMessageHandler" errors.
   pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
@@ -133,8 +129,8 @@ const PdfViewer = ({ url }: { url: string }) => {
 
   return (
       <div className="flex flex-col items-center w-full h-full">
-          {/* Scroll Container with Flex Centering Trick */}
-          <div className="flex-1 w-full overflow-auto bg-[#2B2B2B] rounded-t-lg custom-scrollbar relative">
+          {/* Scroll Container */}
+          <div className="flex-1 w-full overflow-auto bg-md-sys-surfaceVariant/50 rounded-t-lg custom-scrollbar relative">
                <div className="min-h-full min-w-full flex items-center justify-center p-8">
                     <canvas 
                         ref={canvasRef} 
@@ -145,23 +141,23 @@ const PdfViewer = ({ url }: { url: string }) => {
           </div>
           
           {/* Controls */}
-          <div className="w-full bg-[#1E1E1E] p-3 border-t border-white/10 flex items-center justify-between rounded-b-lg shrink-0 z-10">
+          <div className="w-full bg-md-sys-surface p-3 border-t border-md-sys-outline/10 flex items-center justify-between rounded-b-lg shrink-0 z-10">
               
               {/* Zoom Controls */}
               <div className="flex items-center gap-2">
                   <button 
                     onClick={() => handleZoom(-0.25)}
-                    className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                    className="p-1.5 rounded-full hover:bg-md-sys-surfaceVariant text-md-sys-secondary hover:text-md-sys-onSurface transition-colors"
                     title="Zoom Out"
                   >
                       <span className="material-symbols-rounded text-[20px]">remove</span>
                   </button>
-                  <span className="text-xs font-mono text-gray-400 w-12 text-center select-none">
+                  <span className="text-xs font-mono text-md-sys-secondary w-12 text-center select-none">
                       {Math.round(scale * 100)}%
                   </span>
                   <button 
                     onClick={() => handleZoom(0.25)}
-                    className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                    className="p-1.5 rounded-full hover:bg-md-sys-surfaceVariant text-md-sys-secondary hover:text-md-sys-onSurface transition-colors"
                     title="Zoom In"
                   >
                       <span className="material-symbols-rounded text-[20px]">add</span>
@@ -169,7 +165,7 @@ const PdfViewer = ({ url }: { url: string }) => {
                   {/* Fit Width / Reset */}
                   <button 
                     onClick={() => setScale(1.0)}
-                    className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors ml-1"
+                    className="p-1.5 rounded-full hover:bg-md-sys-surfaceVariant text-md-sys-secondary hover:text-md-sys-onSurface transition-colors ml-1"
                     title="Reset Zoom (100%)"
                   >
                       <span className="material-symbols-rounded text-[18px]">center_focus_strong</span>
@@ -177,7 +173,7 @@ const PdfViewer = ({ url }: { url: string }) => {
               </div>
 
               {/* Page Info */}
-              <span className="text-sm font-mono text-gray-300 select-none">
+              <span className="text-sm font-mono text-md-sys-onSurface select-none">
                   Page {pageNum} of {numPages}
               </span>
 
@@ -186,14 +182,14 @@ const PdfViewer = ({ url }: { url: string }) => {
                 <button 
                     onClick={() => changePage(-1)}
                     disabled={pageNum <= 1}
-                    className="p-1.5 rounded-full hover:bg-white/10 disabled:opacity-30 text-white transition-colors"
+                    className="p-1.5 rounded-full hover:bg-md-sys-surfaceVariant disabled:opacity-30 text-md-sys-onSurface transition-colors"
                 >
                     <span className="material-symbols-rounded">chevron_left</span>
                 </button>
                 <button 
                     onClick={() => changePage(1)}
                     disabled={pageNum >= numPages}
-                    className="p-1.5 rounded-full hover:bg-white/10 disabled:opacity-30 text-white transition-colors"
+                    className="p-1.5 rounded-full hover:bg-md-sys-surfaceVariant disabled:opacity-30 text-md-sys-onSurface transition-colors"
                 >
                     <span className="material-symbols-rounded">chevron_right</span>
                 </button>
@@ -350,8 +346,8 @@ export const InputPanel: React.FC<InputPanelProps> = ({
         {/* Composer Container */}
         <div 
           className={`
-            relative flex flex-col w-full bg-[#181818] rounded-xl border transition-all duration-200 shadow-2xl overflow-hidden group
-            ${isDraggingContainer ? 'border-md-sys-primary ring-1 ring-md-sys-primary' : 'border-[#333] hover:border-[#444]'}
+            relative flex flex-col w-full bg-md-sys-surface rounded-xl border transition-all duration-200 shadow-xl overflow-hidden group
+            ${isDraggingContainer ? 'border-md-sys-primary ring-1 ring-md-sys-primary' : 'border-md-sys-outline/20 hover:border-md-sys-outline/40'}
           `}
           onDragOver={handleContainerDragOver}
           onDragLeave={handleContainerDragLeave}
@@ -360,7 +356,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             {/* Overlay for Drag State (New Files) */}
             {isDraggingContainer && (
                 <div className="absolute inset-0 bg-md-sys-primary/10 z-50 flex items-center justify-center backdrop-blur-sm pointer-events-none">
-                    <div className="bg-[#1E1E1E] px-4 py-2 rounded-lg border border-md-sys-primary/30 text-md-sys-primary font-medium flex items-center gap-2 shadow-xl">
+                    <div className="bg-md-sys-surface px-4 py-2 rounded-lg border border-md-sys-primary/30 text-md-sys-primary font-medium flex items-center gap-2 shadow-xl">
                         <span className="material-symbols-rounded">cloud_upload</span>
                         Drop images or PDFs
                     </div>
@@ -380,15 +376,15 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                             onDragEnd={handleItemDragEnd}
                             onClick={() => setPreviewFile(file)}
                             className={`
-                                relative group/file w-16 h-16 rounded-lg overflow-hidden border bg-black/20 shadow-sm cursor-grab active:cursor-grabbing transition-all duration-200
+                                relative group/file w-16 h-16 rounded-lg overflow-hidden border bg-md-sys-surfaceVariant/50 shadow-sm cursor-grab active:cursor-grabbing transition-all duration-200
                                 ${draggedItemIndex === index 
                                     ? 'opacity-40 scale-90 border-md-sys-primary border-dashed' 
-                                    : 'border-white/10 hover:border-white/30 hover:scale-105'
+                                    : 'border-md-sys-outline/10 hover:border-md-sys-primary/30 hover:scale-105'
                                 }
                             `}
                         >
                             {isPdf(file.file) ? (
-                                <div className="w-full h-full bg-[#2a1b1b] flex flex-col items-center justify-center p-2 transition-colors group-hover/file:bg-[#3d2424]">
+                                <div className="w-full h-full bg-red-500/10 flex flex-col items-center justify-center p-2 transition-colors group-hover/file:bg-red-500/20">
                                     <span className="material-symbols-rounded text-red-400 text-3xl">picture_as_pdf</span>
                                 </div>
                             ) : (
@@ -428,11 +424,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                 onChange={(e) => onPromptChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Describe your music or drag & drop sheet music (PDF/Image)..."
-                className="w-full bg-transparent text-[13px] text-gray-200 placeholder:text-gray-500 p-4 min-h-[100px] max-h-[400px] resize-none focus:outline-none leading-relaxed font-sans"
+                className="w-full bg-transparent text-[13px] text-md-sys-onSurface placeholder:text-md-sys-secondary p-4 min-h-[100px] max-h-[400px] resize-none focus:outline-none leading-relaxed font-sans"
             />
 
             {/* Composer Toolbar */}
-            <div className="flex items-center justify-between px-3 py-2.5 bg-[#1E1E1E] border-t border-[#2A2A2A]">
+            <div className="flex items-center justify-between px-3 py-2.5 bg-md-sys-surface border-t border-md-sys-outline/10">
                 
                 {/* Left: Model & Attach */}
                 <div className="flex items-center gap-2">
@@ -447,19 +443,19 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                                 <option key={m.id} value={m.id}>{m.name}</option>
                             ))}
                         </select>
-                        <div className="flex items-center gap-1.5 pl-2.5 pr-2 py-1.5 rounded-full bg-[#2A2A2A] hover:bg-[#333] border border-white/5 transition-colors cursor-pointer group-hover/model:border-white/10">
+                        <div className="flex items-center gap-1.5 pl-2.5 pr-2 py-1.5 rounded-full bg-md-sys-surfaceVariant hover:bg-md-sys-surfaceVariant/80 border border-md-sys-outline/10 transition-colors cursor-pointer group-hover/model:border-md-sys-outline/30">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]"></span>
-                            <span className="text-[11px] font-semibold text-gray-300 truncate max-w-[120px] tracking-tight">{currentModelName}</span>
-                            <span className="material-symbols-rounded text-[14px] text-gray-500 group-hover/model:text-gray-400 transition-colors">expand_more</span>
+                            <span className="text-[11px] font-semibold text-md-sys-onSurface truncate max-w-[120px] tracking-tight">{currentModelName}</span>
+                            <span className="material-symbols-rounded text-[14px] text-md-sys-secondary group-hover/model:text-md-sys-onSurface transition-colors">expand_more</span>
                         </div>
                     </div>
 
-                    <div className="h-4 w-px bg-[#333] mx-1"></div>
+                    <div className="h-4 w-px bg-md-sys-outline/20 mx-1"></div>
 
                     {/* Attach Button */}
                     <button 
                         onClick={() => fileInputRef.current?.click()}
-                        className="p-1.5 text-gray-500 hover:text-gray-200 hover:bg-[#2A2A2A] rounded-md transition-all tooltip-trigger relative group/btn"
+                        className="p-1.5 text-md-sys-secondary hover:text-md-sys-onSurface hover:bg-md-sys-surfaceVariant rounded-md transition-all tooltip-trigger relative group/btn"
                         title="Attach image or PDF"
                     >
                          <span className="material-symbols-rounded text-[20px]">add_photo_alternate</span>
@@ -474,7 +470,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                     {(files.length > 0 || promptText) && (
                         <button 
                             onClick={onReset}
-                            className="text-[10px] font-medium text-gray-500 hover:text-red-400 uppercase tracking-wider transition-colors"
+                            className="text-[10px] font-medium text-md-sys-secondary hover:text-md-sys-error uppercase tracking-wider transition-colors"
                         >
                             Clear
                         </button>
@@ -487,8 +483,8 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                         className={`
                             h-8 w-8 flex items-center justify-center rounded-lg transition-all duration-200
                             ${(files.length > 0 || promptText.trim()) && !generation.isLoading
-                                ? 'bg-white text-black hover:scale-105 shadow-[0_0_10px_rgba(255,255,255,0.1)]' 
-                                : 'bg-[#2A2A2A] text-gray-600 cursor-not-allowed'
+                                ? 'bg-md-sys-onSurface text-md-sys-surface hover:scale-105 shadow-md' 
+                                : 'bg-md-sys-surfaceVariant text-md-sys-secondary cursor-not-allowed'
                             }
                         `}
                     >
@@ -532,9 +528,9 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                     onClick={e => e.stopPropagation()}
                 >
                     {isPdf(previewFile.file) ? (
-                        <div className="w-full h-full bg-[#1E1E1E] rounded-lg overflow-hidden border border-white/10 shadow-2xl relative group flex flex-col">
+                        <div className="w-full h-full bg-md-sys-surface rounded-lg overflow-hidden border border-white/10 shadow-2xl relative group flex flex-col">
                             {/* Use PDFJS Renderer for consistent inline experience */}
-                            <div className="flex-1 min-h-0 bg-[#2B2B2B]">
+                            <div className="flex-1 min-h-0 bg-md-sys-surfaceVariant">
                                 <PdfViewer url={previewFile.preview} />
                             </div>
                         </div>

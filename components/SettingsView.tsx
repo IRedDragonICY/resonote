@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { UserSettings } from '../types';
 import { AVAILABLE_MODELS } from '../constants/models';
@@ -34,101 +33,132 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   return (
-    <div className="flex h-full w-full bg-[#121212] text-gray-300 font-sans">
+    <div className="flex h-full w-full bg-md-sys-background">
+        
         {/* Sidebar */}
-        <div className="w-64 border-r border-white/5 bg-[#181818] flex flex-col pt-4 shrink-0">
-            <div className="px-5 mb-4">
-                 <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Preferences</h2>
+        <div className="w-[240px] border-r border-md-sys-outline/10 flex flex-col pt-6 pb-4 bg-md-sys-surface">
+            <div className="px-6 mb-6">
+                <h2 className="text-xs font-bold text-md-sys-secondary uppercase tracking-widest">Settings</h2>
             </div>
-            <nav className="flex-1 px-2 space-y-0.5">
+            
+            <nav className="flex-1 flex flex-col gap-0.5 px-3">
                 <button 
                     onClick={() => setActiveTab('general')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-[13px] font-medium transition-colors flex items-center gap-2 ${activeTab === 'general' ? 'bg-[#2A2A2A] text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                    className={`text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                        activeTab === 'general' ? 'bg-md-sys-primary/10 text-md-sys-primary' : 'text-md-sys-secondary hover:text-md-sys-onSurface hover:bg-md-sys-surfaceVariant/50'
+                    }`}
                 >
-                    <span className="material-symbols-rounded text-[18px]">tune</span>
-                    General
+                    <div className="flex items-center gap-3">
+                        <span className="material-symbols-rounded text-[20px]">settings</span>
+                        General
+                    </div>
                 </button>
                 <button 
                     onClick={() => setActiveTab('models')}
-                    className={`w-full text-left px-3 py-2 rounded-md text-[13px] font-medium transition-colors flex items-center gap-2 ${activeTab === 'models' ? 'bg-[#2A2A2A] text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                    className={`text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                        activeTab === 'models' ? 'bg-md-sys-primary/10 text-md-sys-primary' : 'text-md-sys-secondary hover:text-md-sys-onSurface hover:bg-md-sys-surfaceVariant/50'
+                    }`}
                 >
-                    <span className="material-symbols-rounded text-[18px]">smart_toy</span>
-                    Models
+                    <div className="flex items-center gap-3">
+                        <span className="material-symbols-rounded text-[20px]">model_training</span>
+                        Models
+                    </div>
                 </button>
             </nav>
-            <div className="p-4 text-[10px] text-gray-600 border-t border-white/5">
-                Resonote Settings
+
+            <div className="px-6 mt-auto">
+                <p className="text-[10px] text-md-sys-outline">Resonote v2.1.0</p>
             </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-[#1e1e1e]">
-            {/* Header */}
-            <div className="h-14 border-b border-white/5 flex items-center px-8 bg-[#1e1e1e] shrink-0">
-                <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <span>User</span>
-                    <span className="material-symbols-rounded text-[14px]">chevron_right</span>
-                    <span className="text-white capitalize">{activeTab}</span>
-                </div>
-            </div>
-
-            {/* Scrollable Form */}
-            <div className="flex-1 overflow-y-auto p-8 max-w-4xl custom-scrollbar">
-                 {activeTab === 'general' && (
-                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <section>
-                            <h3 className="text-lg font-medium text-white mb-1">API Configuration</h3>
-                            <p className="text-sm text-gray-500 mb-4">Manage your connection to Google AI Studio.</p>
-                            
-                            <div className="bg-[#252525] border border-white/5 rounded-lg p-4">
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Google Gemini API Key</label>
-                                <div className="flex gap-2">
-                                    <div className="relative flex-1">
-                                        <input 
-                                            type={showKey ? "text" : "password"}
-                                            value={settings.apiKey}
-                                            onChange={(e) => updateSetting({ apiKey: e.target.value })}
-                                            className="w-full bg-[#181818] border border-white/10 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-md-sys-primary focus:ring-1 focus:ring-md-sys-primary transition-colors placeholder:text-gray-600 font-mono"
-                                            placeholder="AIzaSy..."
-                                        />
-                                        <button 
-                                            onClick={() => setShowKey(!showKey)}
-                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-                                        >
-                                            <span className="material-symbols-rounded text-[18px]">{showKey ? 'visibility_off' : 'visibility'}</span>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="mt-3 flex items-start gap-2 p-2 bg-[#1E1E1E] rounded border border-white/5 text-xs text-gray-400">
-                                    <span className="material-symbols-rounded text-[16px] text-md-sys-primary mt-0.5">info</span>
-                                    <p>Your key is stored locally in your browser's Local Storage. Leaving this blank will use the shared deployment key (which has stricter rate limits).</p>
-                                </div>
+        {/* Content Area */}
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-md-sys-background">
+            
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-12 custom-scrollbar max-w-4xl">
+                <h1 className="text-2xl font-bold text-md-sys-onSurface mb-8 capitalize">{activeTab} Settings</h1>
+                
+                {activeTab === 'general' && (
+                    <div className="space-y-8">
+                        <div className="flex flex-col gap-4 p-6 bg-md-sys-surface rounded-xl border border-md-sys-outline/10">
+                            <div>
+                                <label className="text-base font-semibold text-md-sys-onSurface">Google AI Studio API Key</label>
+                                <p className="text-sm text-md-sys-secondary mt-1">
+                                    Leave blank to use the default key provided by the deployment environment. 
+                                    Providing your own key allows for higher rate limits.
+                                </p>
                             </div>
-                        </section>
-                     </div>
-                 )}
+                            <div className="relative max-w-xl">
+                                <input 
+                                    type={showKey ? "text" : "password"}
+                                    value={settings.apiKey}
+                                    onChange={(e) => updateSetting({ apiKey: e.target.value })}
+                                    placeholder="AIzaSy..."
+                                    className="w-full bg-md-sys-surfaceVariant/30 border border-md-sys-outline/20 rounded-lg px-4 py-3 text-sm text-md-sys-onSurface focus:outline-none focus:border-md-sys-primary focus:ring-1 focus:ring-md-sys-primary transition-all placeholder:text-md-sys-outline"
+                                />
+                                <button 
+                                    onClick={() => setShowKey(!showKey)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-md-sys-secondary hover:text-md-sys-onSurface transition-colors"
+                                >
+                                    <span className="material-symbols-rounded text-lg">{showKey ? 'visibility_off' : 'visibility'}</span>
+                                </button>
+                            </div>
+                        </div>
 
-                 {activeTab === 'models' && (
-                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <section>
-                            <h3 className="text-lg font-medium text-white mb-1">Model Visibility</h3>
-                            <p className="text-sm text-gray-500 mb-4">Configure which AI models are available in the composer dropdown.</p>
+                        {/* Theme Preference */}
+                        <div className="flex flex-col gap-4 p-6 bg-md-sys-surface rounded-xl border border-md-sys-outline/10">
+                            <div>
+                                <label className="text-base font-semibold text-md-sys-onSurface">Appearance</label>
+                                <p className="text-sm text-md-sys-secondary mt-1">
+                                    Choose your preferred theme interface.
+                                </p>
+                            </div>
+                             <div className="flex gap-4">
+                                <button 
+                                    onClick={() => updateSetting({ theme: 'dark' })}
+                                    className={`flex-1 p-4 rounded-lg border flex flex-col items-center gap-2 transition-all ${settings.theme === 'dark' ? 'bg-md-sys-primary/10 border-md-sys-primary text-md-sys-primary' : 'bg-md-sys-surfaceVariant/30 border-md-sys-outline/20 text-md-sys-secondary hover:bg-md-sys-surfaceVariant/50'}`}
+                                >
+                                    <span className="material-symbols-rounded">dark_mode</span>
+                                    <span className="text-sm font-medium">Dark Mode</span>
+                                </button>
+                                <button 
+                                    onClick={() => updateSetting({ theme: 'light' })}
+                                    className={`flex-1 p-4 rounded-lg border flex flex-col items-center gap-2 transition-all ${settings.theme === 'light' ? 'bg-md-sys-primary/10 border-md-sys-primary text-md-sys-primary' : 'bg-md-sys-surfaceVariant/30 border-md-sys-outline/20 text-md-sys-secondary hover:bg-md-sys-surfaceVariant/50'}`}
+                                >
+                                    <span className="material-symbols-rounded">light_mode</span>
+                                    <span className="text-sm font-medium">Light Mode</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
+                {activeTab === 'models' && (
+                    <div className="space-y-6">
+                        <div className="p-6 bg-md-sys-surface rounded-xl border border-md-sys-outline/10">
+                            <p className="text-sm text-md-sys-secondary mb-6">
+                                Select which models appear in the dropdown menu. You can disable older models to keep your workspace clean.
+                            </p>
+                            
                             <div className="space-y-1">
                                 {AVAILABLE_MODELS.map(model => {
                                     const isEnabled = settings.enabledModels.includes(model.id);
                                     return (
-                                        <div key={model.id} className="flex items-center justify-between p-4 bg-[#252525] border border-transparent hover:border-white/5 first:rounded-t-lg last:rounded-b-lg border-b-white/5 group transition-colors">
-                                            <div>
-                                                <div className="text-sm font-medium text-gray-200">{model.name}</div>
-                                                <div className="text-xs text-gray-500 font-mono mt-0.5">{model.id}</div>
+                                        <div 
+                                            key={model.id} 
+                                            className="flex items-center justify-between p-4 rounded-lg hover:bg-md-sys-surfaceVariant/30 transition-colors border border-transparent hover:border-md-sys-outline/10 group"
+                                        >
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-medium text-md-sys-onSurface">{model.name}</span>
+                                                <span className="text-xs font-mono text-md-sys-secondary mt-0.5">{model.id}</span>
                                             </div>
                                             
+                                            {/* Toggle Switch */}
                                             <button 
                                                 onClick={() => toggleModel(model.id)}
                                                 className={`
                                                     relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none
-                                                    ${isEnabled ? 'bg-md-sys-primary' : 'bg-[#404040]'}
+                                                    ${isEnabled ? 'bg-md-sys-primary' : 'bg-md-sys-surfaceVariant'}
                                                 `}
                                             >
                                                 <span 
@@ -139,12 +169,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                                 />
                                             </button>
                                         </div>
-                                    )
+                                    );
                                 })}
                             </div>
-                        </section>
-                     </div>
-                 )}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     </div>

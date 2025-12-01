@@ -50,8 +50,6 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
   }, [onThumbnailGenerated]);
 
   // --- 1. Voice Detection Logic (Decoupled from Editor) ---
-  // This ensures immediate updates on Paste (Ctrl+V) or Delete All (Ctrl+A -> Del)
-  // We parse the ABC string directly without waiting for the visual editor to render.
   useEffect(() => {
     // Handle Empty State immediately
     if (!abcNotation || abcNotation.trim() === "") {
@@ -62,7 +60,6 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
     }
 
     // Parse ABC synchronously to get voice metadata
-    // This is lightweight compared to rendering
     const tunes = abcjs.parseOnly(abcNotation);
     const tune = tunes[0];
 
@@ -70,8 +67,6 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
         const detectedVoices: VoiceInfo[] = [];
         let vCount = 0;
         
-        // Scan the music lines to determine voice structure
-        // We look for the first line that contains staff info
         const firstMusicLine = tune.lines.find((l: any) => l.staff);
         
         if (firstMusicLine && firstMusicLine.staff) {
@@ -79,7 +74,6 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
                     if (st.voices) {
                         st.voices.forEach((v: any, idx: number) => {
                             let name = `Track ${vCount + 1}`;
-                            // Attempt to find voice name in title info
                             if (st.title && st.title[idx]) {
                                 if (st.title[idx].name) name = st.title[idx].name;
                                 else if (st.title[idx].subname) name = st.title[idx].subname;
@@ -91,10 +85,8 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
             });
         }
         
-        // Update state if changed
         setVoices(prev => {
             if (JSON.stringify(detectedVoices) !== JSON.stringify(prev)) {
-                // If the number of voices changed, reset mixer state to prevent index errors
                 if (detectedVoices.length !== prev.length) {
                     setMuted(new Set());
                     setSolos(new Set());
@@ -104,7 +96,6 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
             return prev;
         });
     } else {
-        // Fallback if parse fails or no music lines found
         setVoices([]);
     }
   }, [abcNotation]);
@@ -112,22 +103,19 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
   // --- 2. Editor Initialization ---
   useEffect(() => {
     let retryCount = 0;
-    const maxRetries = 20; // Try for up to 2 seconds
+    const maxRetries = 20;
 
     const initEditor = () => {
       const paper = document.getElementById(paperId);
       const audio = document.getElementById(audioId);
       const textarea = document.getElementById(textareaId);
 
-      // Only initialize if all required elements are present in the DOM
       if (paper && audio && textarea) {
         
-        // Define Custom Cursor Control to restore the visual progress line
         const cursorControl = {
           onStart: () => {
             const svg = paper.querySelector("svg");
             if (svg) {
-                // Remove any existing cursor to prevent duplicates
                 const existing = svg.querySelector(".abcjs-cursor");
                 if(existing) existing.remove();
 
@@ -137,34 +125,26 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
                 cursor.setAttributeNS(null, 'y1', '0');
                 cursor.setAttributeNS(null, 'x2', '0');
                 cursor.setAttributeNS(null, 'y2', '0');
-                // Ensure visibility is handled by CSS, but set pointer events
                 cursor.style.pointerEvents = "none";
                 svg.appendChild(cursor);
             }
           },
           onEvent: (ev: any) => {
-             // Handle case where event might be null or finished
              if (!ev) return;
-
-             // Handle measure lines or events without coordinates
              if (ev.measureStart && ev.left === null) return;
 
-             // 1. Move the Cursor Line
              const cursor = paper.querySelector(".abcjs-cursor");
              if (cursor) {
-               // Safety check for properties
                const left = ev.left !== undefined ? ev.left : 0;
                const top = ev.top !== undefined ? ev.top : 0;
                const height = ev.height !== undefined ? ev.height : 0;
 
-               // Adjust position slightly to center on note
                cursor.setAttribute("x1", (left - 2).toString());
                cursor.setAttribute("x2", (left - 2).toString());
                cursor.setAttribute("y1", top.toString());
                cursor.setAttribute("y2", (top + height).toString());
              }
              
-             // 2. Highlight Notes (Remove old, Add new)
              const lastSelection = paper.querySelectorAll(".abcjs-highlight");
              for (let k = 0; k < lastSelection.length; k++)
                  lastSelection[k].classList.remove("abcjs-highlight");
@@ -181,7 +161,6 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
              }
           },
           onFinished: () => {
-            // Reset cursor and highlights
             const cursor = paper.querySelector(".abcjs-cursor");
             if (cursor) {
                cursor.setAttribute("x1", "0");
@@ -199,7 +178,6 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
             return;
         }
 
-        // Initialize the Editor with the synth and cursor control
         editorRef.current = new abcjs.Editor(textareaId, {
             paper_id: paperId,
             warnings_id: warningId,
@@ -231,12 +209,9 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
                     footerfont: "Inter 10"
                 }
             },
-            onchange: () => {
-                // Note: Voice detection logic moved to dedicated useEffect for reliability
-            }
+            onchange: () => {}
         });
       } else {
-        // Retry if elements aren't ready yet (common in React due to mount timing)
         if (retryCount < maxRetries) {
           retryCount++;
           setTimeout(initEditor, 100);
@@ -250,11 +225,8 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
 
   // --- 3. Sync React State with abcjs Editor ---
   useEffect(() => {
-     // This is crucial for the Visual Editor to update when the prop changes
-     // programmatically (e.g. Paste, Import, AI Generation)
      const ta = document.getElementById(textareaId);
      if(ta) {
-        // We must trigger events so abcjs.Editor detects the value change
         ta.dispatchEvent(new Event('change')); 
         ta.dispatchEvent(new Event('input')); 
      }
@@ -266,16 +238,13 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
 
       const voicesOff: number[] = [];
       if (solos.size > 0) {
-          // If any solo is active, mute everything else
           voices.forEach(v => {
               if (!solos.has(v.id)) voicesOff.push(v.id);
           });
       } else {
-          // Otherwise obey explicit mutes
           muted.forEach(id => voicesOff.push(id));
       }
 
-      // Apply changes to synth
       if (editorRef.current.synthParamChanged) {
            editorRef.current.synthParamChanged({ voicesOff });
       }
@@ -292,10 +261,8 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
     const svg = paper.querySelector("svg");
     if (!svg) return;
 
-    // Clone to avoid modifying the visible SVG
     const svgClone = svg.cloneNode(true) as SVGElement;
     
-    // Inject Styles to ensure black-on-white rendering
     const style = document.createElement("style");
     style.textContent = `
       text, tspan, path { fill: #000000 !important; }
@@ -308,12 +275,10 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
     const canvas = document.createElement('canvas');
     const img = new Image();
     
-    // Determine Dimensions
     const rect = svg.getBoundingClientRect();
     let width = rect.width;
     let height = rect.height;
 
-    // Fallback: Try to get dimensions from viewBox
     if (width === 0 || height === 0) {
         const viewBox = svg.getAttribute('viewBox');
         if (viewBox) {
@@ -325,11 +290,9 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
         }
     }
 
-    // Fallback: If still 0 (e.g. empty SVG), default to A4 ratio
     if (!width || width === 0) width = 595;
     if (!height || height === 0) height = 842;
 
-    // Target thumbnail width (fixed width, responsive height)
     const targetWidth = 400;
     const scale = targetWidth / width;
     const targetHeight = height * scale;
@@ -339,36 +302,29 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
         canvas.height = targetHeight;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-            // White background
             ctx.fillStyle = "#FFFFFF";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            
-            // Export as low-quality JPEG for small size
             const base64 = canvas.toDataURL('image/jpeg', 0.6);
             callback(base64);
         }
     };
     
-    // Encode SVG data safely
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
 
   }, [paperId]);
 
-  // Observer to detect when ABCJS finishes rendering the SVG
   useEffect(() => {
     const paper = document.getElementById(paperId);
     if (!paper) return;
 
     const observer = new MutationObserver((mutations) => {
-        // Debounce thumbnail generation
         if (thumbnailTimeoutRef.current) {
             clearTimeout(thumbnailTimeoutRef.current);
         }
-        
         thumbnailTimeoutRef.current = setTimeout(() => {
             generateThumbnail();
-        }, 1500); // 1.5s delay to let rendering settle and avoid rapid updates
+        }, 1500); 
     });
     
     observer.observe(paper, { childList: true, subtree: true, attributes: true });
@@ -421,7 +377,7 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-white text-black relative">
+    <div className="w-full h-full flex flex-col relative" style={{ backgroundColor: 'var(--sheet-music-bg)', color: 'var(--sheet-music-ink)' }}>
         <MusicToolbar 
             audioId={audioId}
             voices={voices}
@@ -433,7 +389,7 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
             exportingState={exportingState}
         />
 
-        <div className="flex-1 overflow-auto p-4 custom-scrollbar relative bg-white">
+        <div className="flex-1 overflow-auto p-4 custom-scrollbar relative" style={{ backgroundColor: 'var(--sheet-music-bg)' }}>
              {/* Music Paper with scaling support */}
              <div 
                 id={paperId} 

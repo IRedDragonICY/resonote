@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import { LogEntry } from '../types';
 
@@ -11,8 +12,6 @@ const MarkdownText: React.FC<{ text: string; isStreaming?: boolean }> = ({ text,
   const lines = text.split('\n');
 
   // Efficiently find the starting index of the *last* thought section.
-  // If streaming, we animate from the last detected header downwards.
-  // If not streaming, we set index to Infinity so nothing animates.
   const animationStartIndex = isStreaming 
     ? lines.reduce((lastIdx, line, idx) => {
         const trimmed = line.trim();
@@ -44,20 +43,20 @@ const MarkdownText: React.FC<{ text: string; isStreaming?: boolean }> = ({ text,
             */}
             {line.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|".*?")/g).map((part, j) => {
               if (part.startsWith('**') && part.endsWith('**')) {
-                return <strong key={j} className="text-white font-bold">{part.slice(2, -2)}</strong>;
+                return <strong key={j} className="text-md-sys-onSurface font-bold">{part.slice(2, -2)}</strong>;
               }
               if (part.startsWith('*') && part.endsWith('*')) {
                 return <em key={j} className="text-md-sys-tertiary italic">{part.slice(1, -1)}</em>;
               }
               if (part.startsWith('`') && part.endsWith('`')) {
                 return (
-                  <code key={j} className="bg-white/10 px-1.5 py-0.5 rounded text-amber-300 font-mono text-[11px] font-bold mx-0.5 border border-white/5">
+                  <code key={j} className="bg-md-sys-surfaceVariant px-1.5 py-0.5 rounded text-amber-500 font-mono text-[11px] font-bold mx-0.5 border border-md-sys-outline/20">
                     {part.slice(1, -1)}
                   </code>
                 );
               }
               if ((part.startsWith('"') && part.endsWith('"')) || (part.startsWith("'") && part.endsWith("'"))) {
-                return <span key={j} className="text-emerald-300">{part}</span>;
+                return <span key={j} className="text-emerald-500">{part}</span>;
               }
               return <span key={j}>{part}</span>;
             })}
@@ -80,8 +79,8 @@ export const AILogger: React.FC<AILoggerProps> = ({ logs, visible }) => {
   if (!visible && logs.length === 0) return null;
 
   return (
-    <div className={`mt-4 w-full rounded-xl overflow-hidden bg-[#0a0a0a] border border-md-sys-outline/30 backdrop-blur-md transition-all duration-500 ease-in-out shadow-inner ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}>
-      <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+    <div className={`mt-4 w-full rounded-xl overflow-hidden bg-md-sys-surface border border-md-sys-outline/20 shadow-sm transition-all duration-500 ease-in-out ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}>
+      <div className="flex items-center justify-between px-4 py-2 bg-md-sys-surfaceVariant/50 border-b border-md-sys-outline/10">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
           <span className="text-[10px] font-mono font-bold text-md-sys-secondary uppercase tracking-widest">System Status</span>
@@ -101,8 +100,8 @@ export const AILogger: React.FC<AILoggerProps> = ({ logs, visible }) => {
             <div key={idx} className="flex gap-3 group">
               <span className="text-md-sys-outline shrink-0 opacity-40 select-none pt-0.5 text-[10px] w-[50px]">{log.timestamp}</span>
               <div className={`flex-1 break-words leading-relaxed ${
-                log.type === 'warning' ? 'text-red-400' :
-                log.type === 'success' ? 'text-emerald-400' :
+                log.type === 'warning' ? 'text-red-500' :
+                log.type === 'success' ? 'text-emerald-500' :
                 log.type === 'thinking' ? 'text-md-sys-primary' :
                 'text-md-sys-secondary'
               }`}>

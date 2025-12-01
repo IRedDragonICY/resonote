@@ -32,6 +32,7 @@ export interface ValidationResult {
 export interface UserSettings {
   apiKey: string;
   enabledModels: string[]; // List of model IDs that are visible
+  theme: 'light' | 'dark'; // Added theme preference
 }
 
 export interface Session {

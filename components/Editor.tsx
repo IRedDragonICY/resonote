@@ -42,11 +42,11 @@ export const Editor: React.FC<EditorProps> = ({
   }, [warningId]);
 
   return (
-    <div className="w-full h-full flex flex-col bg-md-sys-surface rounded-3xl border border-md-sys-outline overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-md-sys-outline bg-md-sys-surfaceVariant/50">
+    <div className="w-full h-full flex flex-col bg-md-sys-surface rounded-3xl border border-md-sys-outline/20 overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-md-sys-outline/20 bg-md-sys-surfaceVariant/50">
         <div className="flex items-center">
           <span className="material-symbols-rounded text-md-sys-primary mr-3">code</span>
-          <h3 className="text-md font-medium text-white tracking-wide">ABC Notation Source</h3>
+          <h3 className="text-md font-medium text-md-sys-onSurface tracking-wide">ABC Notation Source</h3>
         </div>
         <div className="flex items-center gap-1">
              {/* Transpose Controls */}
@@ -58,7 +58,7 @@ export const Editor: React.FC<EditorProps> = ({
                 >
                    <span className="material-symbols-rounded text-[18px]">remove</span>
                 </button>
-                <span className="text-[10px] font-bold text-gray-500 px-2 uppercase tracking-wider select-none">Transpose</span>
+                <span className="text-[10px] font-bold text-md-sys-secondary px-2 uppercase tracking-wider select-none">Transpose</span>
                 <button 
                   onClick={() => onTranspose(1)}
                   className="p-1.5 hover:bg-white/10 rounded-md text-md-sys-secondary hover:text-white transition-colors"
@@ -68,18 +68,18 @@ export const Editor: React.FC<EditorProps> = ({
                 </button>
              </div>
 
-             <div className="w-px h-6 bg-white/10 mx-2"></div>
+             <div className="w-px h-6 bg-md-sys-outline/20 mx-2"></div>
 
              <button 
                 onClick={onImport} 
-                className="p-2 hover:bg-white/10 rounded-lg text-md-sys-secondary hover:text-white transition-colors" 
+                className="p-2 hover:bg-md-sys-surfaceVariant rounded-lg text-md-sys-secondary hover:text-md-sys-onSurface transition-colors" 
                 title="Import Source (.abc, .txt)"
              >
                 <span className="material-symbols-rounded text-[20px]">upload_file</span>
              </button>
              <button 
                 onClick={onExport} 
-                className="p-2 hover:bg-white/10 rounded-lg text-md-sys-secondary hover:text-white transition-colors" 
+                className="p-2 hover:bg-md-sys-surfaceVariant rounded-lg text-md-sys-secondary hover:text-md-sys-onSurface transition-colors" 
                 title="Export Source (.abc)"
              >
                 <span className="material-symbols-rounded text-[20px]">download</span>
@@ -101,10 +101,10 @@ export const Editor: React.FC<EditorProps> = ({
       {warningId && (
         <div 
           id={warningId}
-          className={`empty:hidden border-t border-md-sys-outline/30 text-xs font-mono p-4 max-h-[150px] overflow-auto whitespace-pre-wrap shadow-inner transition-colors duration-300 ${
+          className={`empty:hidden border-t border-md-sys-outline/20 text-xs font-mono p-4 max-h-[150px] overflow-auto whitespace-pre-wrap shadow-inner transition-colors duration-300 ${
             isSuccess 
-              ? "bg-emerald-900/20 text-emerald-400 border-emerald-500/20" 
-              : "bg-[#2a1515] text-red-300 border-red-500/20"
+              ? "bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
+              : "bg-red-900/10 text-red-600 dark:text-red-300 border-red-500/20"
           }`}
         >
         </div>
