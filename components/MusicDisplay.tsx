@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useImperativeHandle, useCallback, useState } from 'react';
 import abcjs from 'abcjs';
 import { MusicToolbar } from './music/MusicToolbar';
+import { VirtualPiano } from './music/VirtualPiano';
 import { exportMusic } from '../utils/exportHandler';
 
 interface MusicDisplayProps {
@@ -38,10 +39,14 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
   
   const [exportingState, setExportingState] = useState<string | null>(null);
 
-  // Mixer State
+  // Mixer & Instrument State
   const [voices, setVoices] = useState<VoiceInfo[]>([]);
   const [muted, setMuted] = useState<Set<number>>(new Set());
   const [solos, setSolos] = useState<Set<number>>(new Set());
+  const [instrument, setInstrument] = useState<number>(0); // 0 = Grand Piano
+
+  // Visualization State
+  const [activeMidiNotes, setActiveMidiNotes] = useState<number[]>([]);
   
   // Stable ref for the callback to prevent re-triggering effects on prop changes
   const onThumbnailGeneratedRef = useRef(onThumbnailGenerated);
@@ -112,8 +117,22 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
 
       if (paper && audio && textarea) {
         
+        // --- CLEANUP LOGIC ---
+        // Fix for "piling up" audio: Stop previous instance before creating new one
+        if (editorRef.current) {
+            // 1. Try to stop playback if active by finding the pushed start button
+            const pauseBtn = audio.querySelector('.abcjs-midi-start.abcjs-pushed');
+            if (pauseBtn && pauseBtn instanceof HTMLElement) {
+                pauseBtn.click(); // Programmatically trigger pause
+            }
+            
+            // 2. Clear the audio div to remove old controls and force fresh init
+            audio.innerHTML = "";
+        }
+        
         const cursorControl = {
           onStart: () => {
+            setActiveMidiNotes([]); // Clear piano
             const svg = paper.querySelector("svg");
             if (svg) {
                 const existing = svg.querySelector(".abcjs-cursor");
@@ -131,6 +150,15 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
           },
           onEvent: (ev: any) => {
              if (!ev) return;
+             
+             // --- Update Virtual Piano ---
+             if (ev.midiPitches && ev.midiPitches.length > 0) {
+                 setActiveMidiNotes(ev.midiPitches.map((p: any) => p.pitch));
+             } else {
+                 // If rests or formatting events, clear keys
+                 setActiveMidiNotes([]);
+             }
+
              if (ev.measureStart && ev.left === null) return;
 
              const cursor = paper.querySelector(".abcjs-cursor");
@@ -161,6 +189,7 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
              }
           },
           onFinished: () => {
+            setActiveMidiNotes([]); // Clear piano
             const cursor = paper.querySelector(".abcjs-cursor");
             if (cursor) {
                cursor.setAttribute("x1", "0");
@@ -174,10 +203,7 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
           }
         };
 
-        if (editorRef.current) {
-            return;
-        }
-
+        // We re-create Editor when instrument changes to force synth re-init with new program
         editorRef.current = new abcjs.Editor(textareaId, {
             paper_id: paperId,
             warnings_id: warningId,
@@ -189,7 +215,9 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
                     displayRestart: true, 
                     displayPlay: true, 
                     displayProgress: true, 
-                    displayWarp: true 
+                    displayWarp: true,
+                    program: instrument, // Bind Instrument
+                    soundFontUrl: "https://paulrosen.github.io/midi-js-soundfonts/FluidR3_GM/" // Ensure full soundfont
                 }
             },
             abcjsParams: {
@@ -220,8 +248,20 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
     };
 
     initEditor();
+    
+    // Cleanup on unmount or re-run
+    return () => {
+         const audio = document.getElementById(audioId);
+         if (editorRef.current && audio) {
+             const pauseBtn = audio.querySelector('.abcjs-midi-start.abcjs-pushed');
+             if (pauseBtn && pauseBtn instanceof HTMLElement) {
+                 pauseBtn.click();
+             }
+             audio.innerHTML = "";
+         }
+    };
 
-  }, [textareaId, paperId, audioId, warningId]);
+  }, [textareaId, paperId, audioId, warningId, instrument]); // Add instrument dependency
 
   // --- 3. Sync React State with abcjs Editor ---
   useEffect(() => {
@@ -387,24 +427,31 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
             onToggleSolo={toggleSolo}
             onExport={handleExport}
             exportingState={exportingState}
+            instrument={instrument}
+            onInstrumentChange={setInstrument}
         />
 
-        <div className="flex-1 overflow-auto p-4 custom-scrollbar relative" style={{ backgroundColor: 'var(--sheet-music-bg)' }}>
+        <div className="flex-1 overflow-auto p-4 custom-scrollbar relative flex flex-col" style={{ backgroundColor: 'var(--sheet-music-bg)' }}>
              {/* Music Paper with scaling support */}
-             <div 
-                id={paperId} 
-                className="w-full min-h-full transition-transform duration-200 ease-out origin-top-left" 
-                style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }}
-             />
-             {(!abcNotation) && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
-                     <div className="text-center text-md-sys-secondary">
-                        <span className="material-symbols-rounded text-6xl">music_note</span>
-                        <p className="mt-2 text-sm">Visualization area</p>
-                     </div>
-                </div>
-             )}
+             <div className="flex-1">
+                 <div 
+                    id={paperId} 
+                    className="w-full min-h-full transition-transform duration-200 ease-out origin-top-left" 
+                    style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }}
+                 />
+                 {(!abcNotation) && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+                         <div className="text-center text-md-sys-secondary">
+                            <span className="material-symbols-rounded text-6xl">music_note</span>
+                            <p className="mt-2 text-sm">Visualization area</p>
+                         </div>
+                    </div>
+                 )}
+             </div>
         </div>
+        
+        {/* Virtual Piano Visualization Area */}
+        <VirtualPiano activeNotes={activeMidiNotes} />
     </div>
   );
 });
