@@ -142,6 +142,7 @@ export const Editor: React.FC<EditorProps> = ({
     <div className="w-full h-full flex flex-col bg-md-sys-surface rounded-3xl border border-md-sys-outline/20 overflow-hidden shadow-sm transition-shadow hover:shadow-md relative">
       
       <EditorToolbar 
+        abcContent={value}
         onImport={onImport}
         onExport={onExport}
         onTransposeClick={handleTransposeClick}

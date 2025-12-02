@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { MusicDisplay, MusicDisplayHandle } from './MusicDisplay';
 import { Editor } from './Editor';
@@ -63,13 +64,16 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       // We don't commit history here immediately, let user do next action
   };
 
+  // Logic: Sidebar is visible ONLY if showSidebar is true AND focusMode is false
+  const isSidebarVisible = viewSettings.showSidebar && !viewSettings.isFocusMode;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full transition-all duration-300 ease-in-out">
       
       {/* Left Column: Input & Editor */}
       <div className={`
           flex flex-col gap-4 h-full overflow-y-auto pr-1 transition-all duration-300 ease-in-out min-h-0
-          ${viewSettings.showSidebar ? 'lg:col-span-5 opacity-100 translate-x-0' : 'hidden opacity-0 -translate-x-full w-0'}
+          ${isSidebarVisible ? 'lg:col-span-5 opacity-100 translate-x-0' : 'hidden opacity-0 -translate-x-full w-0'}
       `}>
         
         {/* Input Panel */}
@@ -107,9 +111,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       {/* Right Column: Visualization */}
       <div className={`
           h-full flex flex-col pb-4 transition-all duration-300 ease-in-out min-h-0
-          ${viewSettings.showSidebar ? 'lg:col-span-7' : 'lg:col-span-12'}
+          ${isSidebarVisible ? 'lg:col-span-7' : 'lg:col-span-12'}
       `}>
-         <div className="flex-1 bg-md-sys-surface rounded-2xl border border-md-sys-outline/20 overflow-hidden relative shadow-2xl min-h-0 flex flex-col">
+         <div className={`flex-1 bg-md-sys-surface rounded-2xl ${viewSettings.isFocusMode ? 'border-0 rounded-none' : 'border border-md-sys-outline/20 shadow-2xl'} overflow-hidden relative min-h-0 flex flex-col transition-all duration-300`}>
              <MusicDisplay 
                ref={musicDisplayRef}
                abcNotation={data.abc} 

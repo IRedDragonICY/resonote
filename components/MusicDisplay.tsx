@@ -164,16 +164,35 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
 
              if (ev.measureStart && ev.left === null) return;
 
-             const cursor = paper.querySelector(".abcjs-cursor");
+             const cursor = paper.querySelector(".abcjs-cursor") as SVGLineElement;
              if (cursor) {
-               const left = ev.left !== undefined ? ev.left : 0;
-               const top = ev.top !== undefined ? ev.top : 0;
-               const height = ev.height !== undefined ? ev.height : 0;
+               const newLeft = ev.left !== undefined ? ev.left - 2 : 0;
+               const newTop = ev.top !== undefined ? ev.top : 0;
+               const newHeight = ev.height !== undefined ? ev.height : 0;
+               
+               // --- Smooth Interpolation Logic ---
+               const prevX = parseFloat(cursor.getAttribute('x1') || '0');
+               const prevY = parseFloat(cursor.getAttribute('y1') || '0');
 
-               cursor.setAttribute("x1", (left - 2).toString());
-               cursor.setAttribute("x2", (left - 2).toString());
-               cursor.setAttribute("y1", top.toString());
-               cursor.setAttribute("y2", (top + height).toString());
+               // Determine movement type
+               // 1. New Line: Vertical change > threshold (e.g., 5px)
+               const isNewLine = Math.abs(newTop - prevY) > 5;
+               // 2. Backward Jump: Repeat sign or D.C. al Fine
+               const isBackward = newLeft < prevX;
+
+               if (isNewLine || isBackward) {
+                   // Snap instantly for big jumps to prevent diagonal flying
+                   cursor.style.transition = 'none';
+               } else {
+                   // Smooth glide for consecutive notes on the same system
+                   // 0.1s ensures responsiveness without lag, bridging the gap between discrete events
+                   cursor.style.transition = 'x1 0.1s linear, x2 0.1s linear, y1 0.1s linear, y2 0.1s linear';
+               }
+
+               cursor.setAttribute("x1", newLeft.toString());
+               cursor.setAttribute("x2", newLeft.toString());
+               cursor.setAttribute("y1", newTop.toString());
+               cursor.setAttribute("y2", (newTop + newHeight).toString());
              }
              
              const lastSelection = paper.querySelectorAll(".abcjs-highlight");

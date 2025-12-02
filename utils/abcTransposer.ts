@@ -295,3 +295,55 @@ const transposeChordSymbol = (chord: string, semitones: number): string => {
 
     return newChord;
 };
+
+// --- Smart Transposition Utils ---
+
+/**
+ * Extracts the first defined key from an ABC string.
+ * Returns { root: string, mode: string } or null if not found.
+ */
+export const extractKeyFromABC = (abc: string): { root: string, mode: string } | null => {
+    const lines = abc.split('\n');
+    for (const line of lines) {
+        if (line.trim().startsWith('K:')) {
+            const keyContent = line.substring(2).trim();
+            // Regex match Root (A-G), accidental (#/b), and Mode
+            const match = keyContent.match(/^([A-G])([#b]?)(.*)$/);
+            if (match) {
+                return { 
+                    root: match[1] + (match[2] || ''), 
+                    mode: match[3] 
+                };
+            }
+        }
+    }
+    return null;
+};
+
+/**
+ * Calculates the shortest semitone distance between two key roots.
+ * e.g., C to D -> +2. C to B -> -1.
+ */
+export const calculateSemitoneDistance = (sourceRoot: string, targetRoot: string): number => {
+    const getPitch = (root: string) => {
+        if (!root) return 0;
+        let val = BASE_PITCH[root[0].toUpperCase()] || 0;
+        if (root.includes('#')) val += 1;
+        if (root.includes('b')) val -= 1;
+        return normalize(val);
+    };
+
+    const p1 = getPitch(sourceRoot);
+    const p2 = getPitch(targetRoot);
+
+    let diff = p2 - p1;
+    // Normalize to standard octave (0-11)
+    diff = ((diff % 12) + 12) % 12;
+
+    // Find shortest path (e.g. instead of +11, do -1)
+    if (diff > 6) {
+        diff -= 12;
+    }
+
+    return diff;
+};

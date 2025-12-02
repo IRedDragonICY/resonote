@@ -35,6 +35,7 @@ export interface UserSettings {
   enabledModels: string[]; // List of model IDs that are visible
   customModels: { id: string; name: string }[]; // User defined models
   theme: 'light' | 'dark'; // Added theme preference
+  shortcuts: Record<string, string>; // Action ID -> Shortcut string (e.g., 'Ctrl+S')
 }
 
 export interface HistoryEntry {

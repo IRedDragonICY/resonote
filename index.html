@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
@@ -166,13 +167,17 @@
 
       /* Cursor and Highlight */
       #paper svg .abcjs-highlight {
-        fill: #0a9ecc !important;
+        fill: rgb(var(--md-sys-primary)) !important;
+        opacity: 0.8;
       }
       
       #paper svg .abcjs-cursor {
-        stroke: #0a9ecc !important;
-        stroke-width: 2px;
+        stroke: rgb(var(--md-sys-primary)) !important;
+        stroke-width: 3px;
+        stroke-linecap: round;
         fill: none !important;
+        opacity: 0.7;
+        will-change: transform, x1, y1, x2, y2;
       }
 
       /* ABCJS Audio Player CSS */
