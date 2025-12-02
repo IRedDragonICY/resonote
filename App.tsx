@@ -9,7 +9,7 @@ import { FeedbackModal } from './components/modals/FeedbackModal';
 import { TermsModal } from './components/modals/TermsModal';
 import { ChangelogModal } from './components/modals/ChangelogModal';
 import { ConfirmationModal } from './components/modals/ConfirmationModal';
-import { ShortcutsModal } from './components/modals/ShortcutsModal'; // Added
+import { ShortcutsModal } from './components/modals/ShortcutsModal'; 
 import { SettingsView } from './components/SettingsView';
 import { convertImageToABC } from './services/geminiService';
 import { Session, GenerationState, LogEntry, UserSettings, HistoryEntry } from './types';
@@ -18,7 +18,8 @@ import { DEFAULT_MODEL_ID, AVAILABLE_MODELS } from './constants/models';
 import { validateABC } from './utils/abcValidator';
 import { MusicDisplayHandle } from './components/MusicDisplay';
 import { transposeABC } from './utils/abcTransposer';
-import { normalizeKeyEvent, matchesShortcut } from './utils/keyboardUtils'; // Added
+import { normalizeKeyEvent, matchesShortcut } from './utils/keyboardUtils';
+import { startTour } from './components/OnboardingTour'; // Import Tour
 
 // Bumped version to v2 to force load new DEFAULT_ABC with multi-tracks
 const STORAGE_KEY = 'resonote_sessions_v2';
@@ -35,7 +36,7 @@ const DEFAULT_USER_SETTINGS: UserSettings = {
   enabledModels: AVAILABLE_MODELS.map(m => m.id),
   customModels: [],
   theme: 'dark',
-  shortcuts: DEFAULT_SHORTCUTS // Added
+  shortcuts: DEFAULT_SHORTCUTS 
 };
 
 export default function App() {
@@ -62,7 +63,7 @@ export default function App() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
-  const [showShortcuts, setShowShortcuts] = useState(false); // Added
+  const [showShortcuts, setShowShortcuts] = useState(false); 
   
   // Delete Confirmation State
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
@@ -70,6 +71,56 @@ export default function App() {
   // Refs
   const sessionRefs = useRef<Map<string, MusicDisplayHandle>>(new Map());
   const importInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Session Helpers (Needed before tour logic) ---
+  const createNewSession = useCallback((initialAbc?: string, title?: string) => {
+    const startAbc = initialAbc || DEFAULT_ABC;
+    const newSession: Session = {
+        id: Date.now().toString(),
+        title: title || `Untitled Project`,
+        lastModified: Date.now(),
+        isOpen: true, 
+        data: {
+            files: [],
+            prompt: "",
+            abc: startAbc,
+            history: [{ content: startAbc, timestamp: Date.now(), label: 'Initial' }],
+            historyIndex: 0,
+            model: DEFAULT_MODEL_ID,
+            generation: {
+                isLoading: false,
+                error: null,
+                result: null,
+                logs: []
+            }
+        }
+    };
+    setSessions(prev => [...prev, newSession]);
+    setActiveTabId(newSession.id);
+  }, []);
+
+  // --- Onboarding Tour ---
+  useEffect(() => {
+    // Only attempt to start tour if we have an active session to show context
+    if (activeTabId !== 'home' && activeTabId !== 'settings') {
+       setTimeout(() => startTour(), 1000); // Delay to ensure DOM render
+    }
+  }, [activeTabId]);
+
+  const handleStartTour = () => {
+      // If we are on Home, switch to a session or create one to show the tour
+      if (activeTabId === 'home' || activeTabId === 'settings') {
+          if (sessions.length > 0) {
+              setActiveTabId(sessions[0].id);
+          } else {
+              createNewSession();
+          }
+          // Delay tour start slightly for tab switch
+          setTimeout(() => startTour(true), 500);
+      } else {
+          startTour(true);
+      }
+  };
   
   // --- Persistence Logic ---
   useEffect(() => {
@@ -158,33 +209,6 @@ export default function App() {
   useEffect(() => {
     window.dispatchEvent(new Event('resize'));
   }, [activeTabId, viewSettings.showSidebar, viewSettings.isFocusMode]);
-
-  // --- Session Helpers ---
-  const createNewSession = useCallback((initialAbc?: string, title?: string) => {
-    const startAbc = initialAbc || DEFAULT_ABC;
-    const newSession: Session = {
-        id: Date.now().toString(),
-        title: title || `Untitled Project`,
-        lastModified: Date.now(),
-        isOpen: true, 
-        data: {
-            files: [],
-            prompt: "",
-            abc: startAbc,
-            history: [{ content: startAbc, timestamp: Date.now(), label: 'Initial' }],
-            historyIndex: 0,
-            model: DEFAULT_MODEL_ID,
-            generation: {
-                isLoading: false,
-                error: null,
-                result: null,
-                logs: []
-            }
-        }
-    };
-    setSessions(prev => [...prev, newSession]);
-    setActiveTabId(newSession.id);
-  }, []);
 
   const closeSessionTab = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -410,11 +434,6 @@ export default function App() {
             handleResetZoom();
         }
 
-        // Edit Actions (Avoid triggers in Inputs unless it's a global nav)
-        // Browsers handle Undo/Redo natively in inputs. We only want to trigger our custom history
-        // if we are NOT in an input, OR if we want to override standard behavior (careful!)
-        // However, Resonote's state is global. Ctrl+Z in the ABC editor textarea should probably trigger OUR undo, 
-        // because we manage the session state and ABC string via React state, not just browser DOM state.
         else if (is('edit.undo')) {
             e.preventDefault();
             handleUndo();
@@ -586,7 +605,7 @@ export default function App() {
                 onOpenTerms={() => setShowTerms(true)}
                 onOpenChangelog={() => setShowChangelog(true)}
                 onOpenSettings={handleOpenSettings}
-                onOpenShortcuts={() => setShowShortcuts(true)} // Added
+                onOpenShortcuts={() => setShowShortcuts(true)} 
                 onImport={handleImportClick}
                 onExport={handleExport}
                 viewSettings={viewSettings}
@@ -595,6 +614,7 @@ export default function App() {
                 onResetZoom={handleResetZoom}
                 onToggleFocusMode={handleToggleFocusMode}
                 canFocusMode={canFocusMode}
+                onStartTour={handleStartTour} // Pass tour handler
             />
             <TabBar 
                 tabs={visibleTabs} 

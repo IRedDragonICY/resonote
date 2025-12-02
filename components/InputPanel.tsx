@@ -349,6 +349,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     <div className="flex flex-col gap-4">
         {/* Composer Container */}
         <div 
+          id="tour-upload-section"
           className={`
             relative flex flex-col w-full bg-md-sys-surface rounded-xl border transition-all duration-200 shadow-xl overflow-hidden group
             ${isDraggingContainer ? 'border-md-sys-primary ring-1 ring-md-sys-primary' : 'border-md-sys-outline/20 hover:border-md-sys-outline/40'}
@@ -423,6 +424,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
 
             {/* Main Text Input */}
             <textarea
+                id="tour-prompt-input"
                 ref={textareaRef}
                 value={promptText}
                 onChange={(e) => onPromptChange(e.target.value)}
@@ -437,7 +439,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                 {/* Left: Model & Attach */}
                 <div className="flex items-center gap-2">
                     {/* Model Selector Badge */}
-                    <div className="relative group/model">
+                    <div id="tour-model-select" className="relative group/model">
                         <select
                             value={selectedModel}
                             onChange={(e) => onModelSelect(e.target.value)}
@@ -482,6 +484,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
 
                     {/* Generate Button */}
                     <button 
+                        id="tour-generate-btn"
                         onClick={onGenerate}
                         disabled={files.length === 0 && !promptText.trim() || generation.isLoading}
                         className={`

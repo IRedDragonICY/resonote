@@ -48,7 +48,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ abcContent, onImpo
   };
 
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-b border-md-sys-outline/20 bg-md-sys-surfaceVariant/50 backdrop-blur-sm z-20 relative">
+    <div id="tour-editor-toolbar" className="flex items-center justify-between px-6 py-4 border-b border-md-sys-outline/20 bg-md-sys-surfaceVariant/50 backdrop-blur-sm z-20 relative">
       <div className="flex items-center">
         <span className="material-symbols-rounded text-md-sys-primary mr-3 text-[22px]">code</span>
         <h3 className="text-sm font-bold text-md-sys-onSurface tracking-wider uppercase opacity-90">ABC Editor</h3>

@@ -10,7 +10,7 @@ interface HeaderProps {
   onOpenTerms: () => void;
   onOpenChangelog: () => void;
   onOpenSettings: () => void;
-  onOpenShortcuts: () => void; // Added
+  onOpenShortcuts: () => void; 
   onImport: () => void;
   onExport: (type: 'png' | 'jpg' | 'webp' | 'svg' | 'pdf' | 'doc' | 'midi' | 'wav' | 'mp3' | 'abc' | 'txt') => void;
   viewSettings: ViewSettings;
@@ -19,6 +19,7 @@ interface HeaderProps {
   onResetZoom: () => void;
   onToggleFocusMode: () => void;
   canFocusMode: boolean;
+  onStartTour: () => void; // New Prop
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -37,7 +38,8 @@ export const Header: React.FC<HeaderProps> = ({
   onZoom,
   onResetZoom,
   onToggleFocusMode,
-  canFocusMode
+  canFocusMode,
+  onStartTour
 }) => {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [showExportSubmenu, setShowExportSubmenu] = useState(false);
@@ -362,6 +364,15 @@ export const Header: React.FC<HeaderProps> = ({
                       <>
                           <div className="fixed inset-0 z-40" onClick={() => setActiveMenu(null)} />
                           <div className="absolute top-full left-0 mt-2 w-56 bg-[#2B2B2B] rounded-lg shadow-2xl z-50 overflow-hidden flex flex-col py-2 animate-in fade-in zoom-in-95 duration-100 ring-1 ring-white/5">
+                              {/* Tour Button - Highlighted */}
+                              <button 
+                                  onClick={() => { onStartTour(); setActiveMenu(null); }}
+                                  className="text-left px-4 py-2.5 text-[13px] text-[#E3E3E3] hover:bg-[#3d3d3d] transition-colors flex items-center gap-3 bg-md-sys-primary/10"
+                              >
+                                  <span className="material-symbols-rounded text-[18px] text-md-sys-primary">rocket_launch</span>
+                                  Start Interactive Tour
+                              </button>
+                              <div className="h-px bg-white/10 my-1 mx-2"></div>
                               <button 
                                   onClick={handleCheckForUpdates}
                                   disabled={checkingUpdate}

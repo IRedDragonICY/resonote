@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useImperativeHandle, forwardRef, useMemo } from 'react';
 import { transposeABC } from '../utils/abcTransposer';
 import { EditorError } from '../utils/abcHighlighter';
 import { AutocompleteMenu } from './AutocompleteMenu';
@@ -7,6 +7,11 @@ import { useEditorAutocomplete } from '../hooks/useEditorAutocomplete';
 import { EditorToolbar } from './editor/EditorToolbar';
 import { EditorGutter } from './editor/EditorGutter';
 import { SyntaxOverlay } from './editor/SyntaxOverlay';
+
+export interface EditorHandle {
+    setHighlight: (start: number, end: number) => void;
+    clearHighlight: () => void;
+}
 
 interface EditorProps {
   value: string;
@@ -19,7 +24,7 @@ interface EditorProps {
   onCommitHistory?: () => void;
 }
 
-export const Editor: React.FC<EditorProps> = ({ 
+export const Editor = forwardRef<EditorHandle, EditorProps>(({ 
   value, 
   onChange, 
   warningId, 
@@ -28,10 +33,12 @@ export const Editor: React.FC<EditorProps> = ({
   onExport,
   onTranspose,
   onCommitHistory
-}) => {
+}, ref) => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState<EditorError[]>([]);
   const [activeLine, setActiveLine] = useState<number>(1);
+  const [playbackHighlight, setPlaybackHighlight] = useState<{start: number, end: number} | null>(null);
+  
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -39,19 +46,30 @@ export const Editor: React.FC<EditorProps> = ({
   const overlayRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Split lines for rendering
-  const lines = value.split('\n');
+  // Optimized Highlight Handler
+  useImperativeHandle(ref, () => ({
+      setHighlight: (start, end) => {
+          setPlaybackHighlight(prev => {
+              // Critical optimization: Prevent re-render if range is identical
+              if (prev && prev.start === start && prev.end === end) return prev;
+              return { start, end };
+          });
+      },
+      clearHighlight: () => {
+          setPlaybackHighlight(prev => prev === null ? prev : null);
+      }
+  }));
+
+  // Memoize lines to prevent re-splitting on every render if value hasn't changed
+  const lines = useMemo(() => value.split('\n'), [value]);
   const lineCount = lines.length;
 
-  // Custom Hook for Autocomplete Logic
   const { 
     suggestionState, 
     handleKeyUp, 
     handleKeyDown, 
     applySuggestion 
   } = useEditorAutocomplete(textareaRef, onChange);
-
-  // --- Logic Handlers ---
 
   useEffect(() => {
     if (!warningId) return;
@@ -92,12 +110,11 @@ export const Editor: React.FC<EditorProps> = ({
   };
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => {
-    if (gutterRef.current) {
-        gutterRef.current.scrollTop = e.currentTarget.scrollTop;
-    }
+    const { scrollTop, scrollLeft } = e.currentTarget;
+    if (gutterRef.current) gutterRef.current.scrollTop = scrollTop;
     if (overlayRef.current) {
-        overlayRef.current.scrollTop = e.currentTarget.scrollTop;
-        overlayRef.current.scrollLeft = e.currentTarget.scrollLeft;
+        overlayRef.current.scrollTop = scrollTop;
+        overlayRef.current.scrollLeft = scrollLeft;
     }
   }, []);
 
@@ -132,7 +149,6 @@ export const Editor: React.FC<EditorProps> = ({
     onTranspose(semitones);
   };
 
-  // Combine event handlers for the textarea
   const onTextareaKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       handleCursorActivity();
       handleKeyUp(e);
@@ -148,9 +164,7 @@ export const Editor: React.FC<EditorProps> = ({
         onTransposeClick={handleTransposeClick}
       />
 
-      {/* Editor Body */}
       <div className="flex-1 relative min-h-0 flex" ref={containerRef}>
-        
         <EditorGutter 
           lineCount={lineCount}
           activeLine={activeLine}
@@ -158,16 +172,14 @@ export const Editor: React.FC<EditorProps> = ({
           gutterRef={gutterRef}
         />
 
-        {/* Editor Area with Adaptive Background */}
         <div className="flex-1 relative h-full overflow-hidden bg-white dark:bg-[#1E1E1E]"> 
-            
             <SyntaxOverlay 
               lines={lines}
               errors={errors}
               overlayRef={overlayRef}
+              highlight={playbackHighlight}
             />
 
-            {/* Interactive Textarea (Transparent) */}
             <textarea
               ref={textareaRef}
               id={textareaId}
@@ -196,14 +208,12 @@ export const Editor: React.FC<EditorProps> = ({
             )}
         </div>
 
-        {/* Footer Info */}
         <div className="absolute bottom-4 right-4 flex items-center gap-2 pointer-events-none opacity-50 z-20">
              <span className="text-[10px] font-mono text-md-sys-outline">ABC Standard 2.1</span>
              <span className="material-symbols-rounded text-[14px] text-md-sys-outline">verified</span>
         </div>
       </div>
 
-      {/* Validation Status Bar */}
       {warningId && (
         <div 
           id={warningId}
@@ -217,4 +227,6 @@ export const Editor: React.FC<EditorProps> = ({
       )}
     </div>
   );
-};
+});
+
+Editor.displayName = 'Editor';

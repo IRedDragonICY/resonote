@@ -1,8 +1,7 @@
 
-
-import React from 'react';
+import React, { useRef, useCallback } from 'react';
 import { MusicDisplay, MusicDisplayHandle } from './MusicDisplay';
-import { Editor } from './Editor';
+import { Editor, EditorHandle } from './Editor';
 import { InputPanel } from './InputPanel';
 import { Session, UploadFileState, UserSettings } from '../types';
 import { ViewSettings } from '../App';
@@ -35,6 +34,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const { data } = session;
   const EDITOR_TEXTAREA_ID = `abc-source-textarea-${session.id}`;
   const WARNING_ID = `abc-parse-warnings-${session.id}`;
+  
+  // Ref for accessing Editor methods (highlighting)
+  const editorRef = useRef<EditorHandle>(null);
 
   const handleFilesSelected = (newFiles: File[]) => {
       const fileStates: UploadFileState[] = newFiles.map(f => ({
@@ -61,8 +63,16 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           abc: "", 
           generation: { isLoading: false, error: null, result: null, logs: [] } 
       });
-      // We don't commit history here immediately, let user do next action
   };
+
+  // Callback to handle synchronized highlighting from MusicDisplay
+  const handleNotePlay = useCallback((start: number, end: number) => {
+      if (start === -1) {
+          editorRef.current?.clearHighlight();
+      } else {
+          editorRef.current?.setHighlight(start, end);
+      }
+  }, []);
 
   // Logic: Sidebar is visible ONLY if showSidebar is true AND focusMode is false
   const isSidebarVisible = viewSettings.showSidebar && !viewSettings.isFocusMode;
@@ -96,6 +106,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         {/* Code Editor */}
         <div className="flex-1 min-h-[300px] flex flex-col pb-4">
           <Editor 
+            ref={editorRef} // Pass Ref to Editor
             value={data.abc} 
             onChange={(val) => onUpdateSession(session.id, { abc: val })} 
             warningId={WARNING_ID}
@@ -109,10 +120,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       </div>
 
       {/* Right Column: Visualization */}
-      <div className={`
-          h-full flex flex-col pb-4 transition-all duration-300 ease-in-out min-h-0
-          ${isSidebarVisible ? 'lg:col-span-7' : 'lg:col-span-12'}
-      `}>
+      <div 
+          id="tour-visualizer-panel"
+          className={`
+            h-full flex flex-col pb-4 transition-all duration-300 ease-in-out min-h-0
+            ${isSidebarVisible ? 'lg:col-span-7' : 'lg:col-span-12'}
+          `}
+      >
          <div className={`flex-1 bg-md-sys-surface rounded-2xl ${viewSettings.isFocusMode ? 'border-0 rounded-none' : 'border border-md-sys-outline/20 shadow-2xl'} overflow-hidden relative min-h-0 flex flex-col transition-all duration-300`}>
              <MusicDisplay 
                ref={musicDisplayRef}
@@ -121,6 +135,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                textareaId={EDITOR_TEXTAREA_ID}
                onThumbnailGenerated={(base64) => onUpdateSession(session.id, { thumbnail: base64 })}
                zoomLevel={viewSettings.zoomLevel}
+               onNotePlay={handleNotePlay} // Pass sync callback
              />
          </div>
       </div>
