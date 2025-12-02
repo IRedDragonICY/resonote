@@ -46,30 +46,33 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
   const overlayRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Optimized Highlight Handler
+  // Expose highlight methods to parent (Workspace -> MusicDisplay)
   useImperativeHandle(ref, () => ({
       setHighlight: (start, end) => {
+          // Optimization: Only update state if range significantly changed to avoid render thrashing
           setPlaybackHighlight(prev => {
-              // Critical optimization: Prevent re-render if range is identical
               if (prev && prev.start === start && prev.end === end) return prev;
               return { start, end };
           });
       },
       clearHighlight: () => {
-          setPlaybackHighlight(prev => prev === null ? prev : null);
+          setPlaybackHighlight(null);
       }
   }));
 
-  // Memoize lines to prevent re-splitting on every render if value hasn't changed
+  // Split lines for rendering - Memoized for performance
   const lines = useMemo(() => value.split('\n'), [value]);
   const lineCount = lines.length;
 
+  // Custom Hook for Autocomplete Logic
   const { 
     suggestionState, 
     handleKeyUp, 
     handleKeyDown, 
     applySuggestion 
   } = useEditorAutocomplete(textareaRef, onChange);
+
+  // --- Logic Handlers ---
 
   useEffect(() => {
     if (!warningId) return;
@@ -110,11 +113,12 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
   };
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => {
-    const { scrollTop, scrollLeft } = e.currentTarget;
-    if (gutterRef.current) gutterRef.current.scrollTop = scrollTop;
+    if (gutterRef.current) {
+        gutterRef.current.scrollTop = e.currentTarget.scrollTop;
+    }
     if (overlayRef.current) {
-        overlayRef.current.scrollTop = scrollTop;
-        overlayRef.current.scrollLeft = scrollLeft;
+        overlayRef.current.scrollTop = e.currentTarget.scrollTop;
+        overlayRef.current.scrollLeft = e.currentTarget.scrollLeft;
     }
   }, []);
 
@@ -149,6 +153,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
     onTranspose(semitones);
   };
 
+  // Combine event handlers for the textarea
   const onTextareaKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       handleCursorActivity();
       handleKeyUp(e);
@@ -164,7 +169,9 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
         onTransposeClick={handleTransposeClick}
       />
 
+      {/* Editor Body */}
       <div className="flex-1 relative min-h-0 flex" ref={containerRef}>
+        
         <EditorGutter 
           lineCount={lineCount}
           activeLine={activeLine}
@@ -172,7 +179,9 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
           gutterRef={gutterRef}
         />
 
+        {/* Editor Area with Adaptive Background */}
         <div className="flex-1 relative h-full overflow-hidden bg-white dark:bg-[#1E1E1E]"> 
+            
             <SyntaxOverlay 
               lines={lines}
               errors={errors}
@@ -180,6 +189,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
               highlight={playbackHighlight}
             />
 
+            {/* Interactive Textarea (Transparent) */}
             <textarea
               ref={textareaRef}
               id={textareaId}
@@ -208,12 +218,14 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
             )}
         </div>
 
+        {/* Footer Info */}
         <div className="absolute bottom-4 right-4 flex items-center gap-2 pointer-events-none opacity-50 z-20">
              <span className="text-[10px] font-mono text-md-sys-outline">ABC Standard 2.1</span>
              <span className="material-symbols-rounded text-[14px] text-md-sys-outline">verified</span>
         </div>
       </div>
 
+      {/* Validation Status Bar */}
       {warningId && (
         <div 
           id={warningId}

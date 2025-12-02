@@ -11,13 +11,14 @@ interface SyntaxOverlayProps {
 
 export const SyntaxOverlay = memo(({ lines, errors, overlayRef, highlight }: SyntaxOverlayProps) => {
   
-  // Memoize tokenization: Regex parsing only happens when content (lines) changes.
-  // This allows the highlight prop to change rapidly during playback without triggering a re-parse.
+  // Memoize tokenization to avoid re-parsing regex on every playback frame (high freq updates)
+  // This ensures that when 'highlight' prop changes, we only re-render the lightweight components, 
+  // not re-run the heavy tokenizeLine function.
   const tokenizedLines = useMemo(() => {
       return lines.map(line => tokenizeLine(line));
   }, [lines]);
 
-  // Pre-calculate line start indices for fast O(1) lookups during rendering
+  // Calculate line start indices for absolute positioning map
   const lineOffsets = useMemo(() => {
     const offsets: number[] = [];
     let current = 0;
@@ -35,18 +36,18 @@ export const SyntaxOverlay = memo(({ lines, errors, overlayRef, highlight }: Syn
         aria-hidden="true"
     >
         {lines.map((lineContent, i) => {
+            const lineNum = i + 1;
             const lineStartAbs = lineOffsets[i];
             const lineEndAbs = lineStartAbs + lineContent.length;
             
-            // Fast Intersection Check: Skip highlight processing if line is completely outside range
-            const isLineIntersectingHighlight = highlight && 
+            const lineErrors = errors.filter(e => e.line === lineNum && e.col !== undefined);
+            
+            // Optimization: Only process highlight logic if line potentially intersects
+            const isLineHighlighted = highlight && 
                                       highlight.end > lineStartAbs && 
                                       highlight.start < lineEndAbs;
-            
-            // Errors for this line
-            const lineNum = i + 1;
-            const lineErrors = errors.filter(e => e.line === lineNum && e.col !== undefined);
 
+            // Use memoized tokens
             const tokens = tokenizedLines[i];
             let charIndex = 0; // Relative to line
 
@@ -66,19 +67,20 @@ export const SyntaxOverlay = memo(({ lines, errors, overlayRef, highlight }: Syn
                          
                          const colorClass = getTokenColor(token);
                          
-                         // Determine exact highlighting
-                         const isTokenHighlighted = isLineIntersectingHighlight && 
+                         // Determine if this token intersects with the highlight range
+                         const isTokenHighlighted = isLineHighlighted && 
                                                Math.max(tokenStartAbs, highlight!.start) < Math.min(tokenEndAbs, highlight!.end);
 
-                         const highlightStyle = isTokenHighlighted 
-                            ? "bg-md-sys-primary/30 rounded-[2px] shadow-[0_0_0_1px_rgba(var(--md-sys-primary),0.2)]" 
-                            : "";
-
-                         // If no errors overlap this token, render simple span
+                         // Check for error overlap
                          const tokenErrors = lineErrors.filter(e => {
                              const errIdx = e.col! - 1;
                              return errIdx >= tokenStartRel && errIdx < tokenEndRel;
                          });
+                         
+                         // Base Wrapper Style for Highlight
+                         const highlightStyle = isTokenHighlighted 
+                            ? "bg-md-sys-primary/30 rounded-[2px] shadow-[0_0_0_1px_rgba(var(--md-sys-primary),0.2)] transition-colors duration-75" 
+                            : "";
 
                          if (tokenErrors.length === 0) {
                              return (
@@ -88,7 +90,7 @@ export const SyntaxOverlay = memo(({ lines, errors, overlayRef, highlight }: Syn
                              );
                          }
                          
-                         // Render with error indicators inside token
+                         // Handle token split due to error (Complex case)
                          const nodes: React.ReactNode[] = [];
                          let lastTokenIdx = 0;
                          const sortedErrors = tokenErrors.sort((a,b) => a.col! - b.col!);
@@ -100,6 +102,7 @@ export const SyntaxOverlay = memo(({ lines, errors, overlayRef, highlight }: Syn
                                  nodes.push(token.content.substring(lastTokenIdx, errIdxInToken));
                              }
                              
+                             // Error Char
                              nodes.push(
                                  <span key={`err-${tIdx}-${errSeq}`} className="bg-red-500/50 border-b-2 border-red-500 text-white rounded-sm">
                                      {token.content.charAt(errIdxInToken)}
@@ -116,6 +119,7 @@ export const SyntaxOverlay = memo(({ lines, errors, overlayRef, highlight }: Syn
                          return <span key={tIdx} className={`${colorClass} ${highlightStyle}`}>{nodes}</span>;
                      })}
                      
+                     {/* EOL Error */}
                      {lineErrors.some(e => (e.col! - 1) >= lineContent.length) && (
                         <span className="bg-red-500/50 border-b-2 border-red-500 inline-block w-[1ch]">&nbsp;</span>
                      )}
