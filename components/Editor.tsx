@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
+import { transposeABC } from '../utils/abcTransposer';
 
 interface EditorProps {
   value: string;
@@ -24,6 +25,7 @@ export const Editor: React.FC<EditorProps> = ({
 }) => {
   const [isSuccess, setIsSuccess] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!warningId) return;
@@ -57,6 +59,37 @@ export const Editor: React.FC<EditorProps> = ({
     }
   };
 
+  const handleTransposeClick = (semitones: number) => {
+    if (textareaRef.current) {
+        const start = textareaRef.current.selectionStart;
+        const end = textareaRef.current.selectionEnd;
+
+        // If there is a text selection, transpose only that part
+        if (start !== end) {
+            const selection = value.substring(start, end);
+            const transposedSelection = transposeABC(selection, semitones);
+            const newValue = value.substring(0, start) + transposedSelection + value.substring(end);
+            
+            onChange(newValue);
+
+            // Restore selection to the new transposed text
+            requestAnimationFrame(() => {
+                if (textareaRef.current) {
+                    textareaRef.current.setSelectionRange(start, start + transposedSelection.length);
+                    textareaRef.current.focus();
+                }
+            });
+
+            // Commit to history immediately (treat as a manual edit action)
+            if (onCommitHistory) onCommitHistory();
+            return;
+        }
+    }
+
+    // Otherwise, transpose the entire song via parent handler
+    onTranspose(semitones);
+  };
+
   return (
     <div className="w-full h-full flex flex-col bg-md-sys-surface rounded-3xl border border-md-sys-outline/20 overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4 border-b border-md-sys-outline/20 bg-md-sys-surfaceVariant/50">
@@ -68,7 +101,7 @@ export const Editor: React.FC<EditorProps> = ({
              {/* Transpose Controls */}
              <div className="flex items-center mr-2 bg-black/20 rounded-lg p-0.5 border border-white/5">
                 <button 
-                  onClick={() => onTranspose(-1)}
+                  onClick={() => handleTransposeClick(-1)}
                   className="p-1.5 hover:bg-white/10 rounded-md text-md-sys-secondary hover:text-white transition-colors"
                   title="Transpose Down (-1 Semitone)"
                 >
@@ -76,7 +109,7 @@ export const Editor: React.FC<EditorProps> = ({
                 </button>
                 <span className="text-[10px] font-bold text-md-sys-secondary px-2 uppercase tracking-wider select-none">Transpose</span>
                 <button 
-                  onClick={() => onTranspose(1)}
+                  onClick={() => handleTransposeClick(1)}
                   className="p-1.5 hover:bg-white/10 rounded-md text-md-sys-secondary hover:text-white transition-colors"
                   title="Transpose Up (+1 Semitone)"
                 >
@@ -104,6 +137,7 @@ export const Editor: React.FC<EditorProps> = ({
       </div>
       <div className="flex-1 relative min-h-0">
         <textarea
+          ref={textareaRef}
           id={textareaId}
           value={value}
           onChange={(e) => handleChange(e.target.value)}
