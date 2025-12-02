@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Header } from './components/Header';
 import { TabBar } from './components/TabBar';
@@ -634,7 +635,7 @@ export default function App() {
   const canRedo = currentSession ? currentSession.data.historyIndex < currentSession.data.history.length - 1 : false;
 
   return (
-    <div className="min-h-screen bg-md-sys-background text-md-sys-secondary selection:bg-md-sys-primary selection:text-md-sys-onPrimary font-sans flex flex-col overflow-hidden">
+    <div className="h-screen w-full bg-md-sys-background text-md-sys-secondary selection:bg-md-sys-primary selection:text-md-sys-onPrimary font-sans flex flex-col overflow-hidden">
       
       <input 
         type="file" 

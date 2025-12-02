@@ -109,6 +109,12 @@
         --scrollbar-thumb: #444;
       }
 
+      html, body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden; /* CRITICAL: Prevent global scrolling */
+      }
+
       body {
         background-color: rgb(var(--md-sys-background));
         color: rgb(var(--md-sys-on-surface));

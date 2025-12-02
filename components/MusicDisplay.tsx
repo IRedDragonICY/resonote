@@ -48,6 +48,9 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
   // Visualization State
   const [activeMidiNotes, setActiveMidiNotes] = useState<number[]>([]);
   
+  // Track unscaled content size to update scroll container when zoomed
+  const [contentHeight, setContentHeight] = useState<number>(0);
+  
   // Stable ref for the callback to prevent re-triggering effects on prop changes
   const onThumbnailGeneratedRef = useRef(onThumbnailGenerated);
   useEffect(() => {
@@ -263,6 +266,22 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
 
   }, [textareaId, paperId, audioId, warningId, instrument]); // Add instrument dependency
 
+  // Monitor Paper Height for Zoom Scroll Fix
+  useEffect(() => {
+    const paper = document.getElementById(paperId);
+    if (!paper) return;
+
+    const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+            // We read the clientHeight of the paper, assuming abcjs sizes it correctly based on SVG content
+            setContentHeight(entry.contentRect.height);
+        }
+    });
+    
+    observer.observe(paper);
+    return () => observer.disconnect();
+  }, [paperId, abcNotation]);
+
   // --- 3. Sync React State with abcjs Editor ---
   useEffect(() => {
      const ta = document.getElementById(textareaId);
@@ -431,14 +450,18 @@ export const MusicDisplay = React.forwardRef<MusicDisplayHandle, MusicDisplayPro
             onInstrumentChange={setInstrument}
         />
 
-        <div className="flex-1 overflow-auto p-4 custom-scrollbar relative flex flex-col" style={{ backgroundColor: 'var(--sheet-music-bg)' }}>
+        <div className="flex-1 min-h-0 overflow-auto p-4 custom-scrollbar relative flex flex-col" style={{ backgroundColor: 'var(--sheet-music-bg)' }}>
              {/* Music Paper with scaling support */}
-             <div className="flex-1">
-                 <div 
-                    id={paperId} 
-                    className="w-full min-h-full transition-transform duration-200 ease-out origin-top-left" 
-                    style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }}
-                 />
+             <div className="flex-1 w-full relative">
+                 {/* Scroll Wrapper to enforce height on zoom */}
+                 <div style={{ height: contentHeight > 0 && zoomLevel !== 1 ? contentHeight * zoomLevel : 'auto', transformOrigin: 'top left' }}>
+                    <div 
+                        id={paperId} 
+                        className="w-full min-h-full transition-transform duration-200 ease-out origin-top-left" 
+                        style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }}
+                    />
+                 </div>
+
                  {(!abcNotation) && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
                          <div className="text-center text-md-sys-secondary">

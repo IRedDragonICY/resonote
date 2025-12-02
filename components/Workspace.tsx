@@ -68,7 +68,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       
       {/* Left Column: Input & Editor */}
       <div className={`
-          flex flex-col gap-4 h-full overflow-y-auto pr-1 transition-all duration-300 ease-in-out
+          flex flex-col gap-4 h-full overflow-y-auto pr-1 transition-all duration-300 ease-in-out min-h-0
           ${viewSettings.showSidebar ? 'lg:col-span-5 opacity-100 translate-x-0' : 'hidden opacity-0 -translate-x-full w-0'}
       `}>
         
@@ -106,10 +106,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
       {/* Right Column: Visualization */}
       <div className={`
-          h-full flex flex-col pb-4 transition-all duration-300 ease-in-out
+          h-full flex flex-col pb-4 transition-all duration-300 ease-in-out min-h-0
           ${viewSettings.showSidebar ? 'lg:col-span-7' : 'lg:col-span-12'}
       `}>
-         <div className="flex-1 bg-md-sys-surface rounded-2xl border border-md-sys-outline/20 overflow-hidden relative shadow-2xl">
+         <div className="flex-1 bg-md-sys-surface rounded-2xl border border-md-sys-outline/20 overflow-hidden relative shadow-2xl min-h-0 flex flex-col">
              <MusicDisplay 
                ref={musicDisplayRef}
                abcNotation={data.abc} 
